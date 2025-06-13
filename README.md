@@ -2,7 +2,7 @@
 
 <img src="frontend/public/treenormal.png" alt="Forestfy Tree" width="300"/>
 
-Forestfy is a decentralized platform for forest conservation and sustainable management using blockchain technology.
+Forestfy is a Web3 focus-to-earn app where users stake tokens, mint NFT trees, trade them, and grow their forest while improving concentration.
 
 > **Note**: This project is in very early development stage. The current implementation uses a custom backend with a sponsor wallet for gas transactions. In the future, we plan to migrate to a more integrated service that better aligns with abstract wallet techniques, following best practices and providing a more fluid user experience.
 
