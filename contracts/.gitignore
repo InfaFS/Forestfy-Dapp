@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+cache/
+artifacts/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+coverageEnv.json
+gas-report.txt
+
+# Hardhat files
+.hardhat/
+cache-zk/
+cache-zk-solc/
+cache-zk-solc-0.8.20/
+cache-zk-solc-0.8.20-complex/
+cache-zk-solc-0.8.20-full/
+cache-zk-solc-0.8.20-full-complex/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.csv
+*.json
+!package.json
+!tsconfig.json
+!hardhat.config.ts
+!ignition.config.ts 

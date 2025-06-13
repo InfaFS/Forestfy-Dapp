@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+yarn-error.log
+.git
+.gitignore
+README.md
+.env
+.nyc_output
+coverage
+.dist
+*.md
+.DS_Store 
