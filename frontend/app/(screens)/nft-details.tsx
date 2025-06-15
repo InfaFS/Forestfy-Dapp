@@ -1,17 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, StatusBar, ScrollView, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, StatusBar, ScrollView, Image } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { useReadContract, useActiveAccount } from 'thirdweb/react';
-import { MarketplaceContract, NFTContract, TokenContract } from '@/constants/thirdweb';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
-import { router, useLocalSearchParams } from 'expo-router';
-import { buyNFT } from '@/constants/api';
+import { useLocalSearchParams, router } from 'expo-router';
 import { NFTBuyAlert } from '@/components/NFTBuyAlert';
 import { ConfirmNFTBuyAlert } from '@/components/ConfirmNFTBuyAlert';
+import { useNFTMetadata } from '@/hooks/useNFTMetadata';
+import { useMarketplaceListing } from '@/hooks/useMarketplaceListing';
+import { useUserWalletData } from '@/hooks/useUserWalletData';
+import { useWallet } from '@/contexts/WalletContext';
 import { useTrees } from '@/contexts/TreesContext';
-import { useMarketplace } from '@/contexts/MarketplaceContext';
+import { PixelBackButton } from '@/components/common/PixelBackButton';
+import { formatPrice, formatAddress, formatDate, extractRarity, getRarityColor } from '@/utils/nftHelpers';
+import { NFTBuyButton } from '@/components/marketplace/NFTBuyButton';
+import { NOTIFICATION_MESSAGES } from '@/constants/NotificationStyles';
 
 interface Listing {
   tokenId: bigint;
@@ -21,35 +25,15 @@ interface Listing {
   listedAt: bigint;
 }
 
-interface NFTMetadata {
-  name?: string;
-  description?: string;
-  image?: string;
-  attributes?: Array<{
-    trait_type: string;
-    value: string | number;
-  }>;
-}
-
 export default function NFTDetailsScreen() {
   const { tokenId } = useLocalSearchParams<{ tokenId: string }>();
-  const [metadata, setMetadata] = useState<NFTMetadata | null>(null);
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isBuying, setIsBuying] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState<'success' | 'error'>('success');
   const [alertMessage, setAlertMessage] = useState('');
   const [showConfirmBuy, setShowConfirmBuy] = useState(false);
-
-  // Obtener cuenta activa
-  const activeAccount = useActiveAccount();
-  const address = activeAccount?.address || '';
-
-  // Contextos para refrescar datos
-  const { triggerRefresh: triggerTreesRefresh } = useTrees();
-  const { triggerRefresh: triggerMarketplaceRefresh } = useMarketplace();
+  const [confirmBuyFunction, setConfirmBuyFunction] = useState<(() => Promise<void>) | null>(null);
+  const [isPurchaseInProgress, setIsPurchaseInProgress] = useState(false);
+  const [cachedListing, setCachedListing] = useState<Listing | null>(null);
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -59,200 +43,173 @@ export default function NFTDetailsScreen() {
   // Convertir tokenId string a bigint
   const tokenIdBigInt = tokenId ? BigInt(tokenId) : BigInt(0);
 
-  // Obtener URI del NFT
-  const { data: uriData } = useReadContract({
-    contract: NFTContract,
-    method: "function tokenURI(uint256 tokenId) view returns (string memory)",
-    params: [tokenIdBigInt],
-  });
+  // Usar hooks personalizados
+  const { metadata, imageUrl, isLoading } = useNFTMetadata(tokenIdBigInt);
+  const { listing } = useMarketplaceListing(tokenIdBigInt, { disableAutoRefresh: true });
+  const { address, refreshUserData } = useUserWalletData();
+  const { refreshBalance } = useWallet();
+  const { triggerRefresh: triggerTreesRefresh } = useTrees();
 
-  // Obtener detalles del listing
-  const { data: listingData } = useReadContract({
-    contract: MarketplaceContract,
-    method: "function getListing(uint256 tokenId) view returns ((uint256 tokenId, address seller, uint256 price, bool isActive, uint256 listedAt))",
-    params: [tokenIdBigInt],
-  });
-
-  // Obtener balance del usuario
-  const { data: balanceData } = useReadContract({
-    contract: TokenContract,
-    method: "function virtualBalance(address user) view returns (uint256)",
-    params: [address],
-  });
-
-  // Obtener parcelas del usuario
-  const { data: parcelData } = useReadContract({
-    contract: NFTContract,
-    method: "function getUserParcels(address user) view returns (uint256)",
-    params: [address],
-  });
-
-  // Obtener cantidad de tokens del usuario
-  const { data: tokenCountData } = useReadContract({
-    contract: NFTContract,
-    method: "function getUserTokenCount(address user) view returns (uint256)",
-    params: [address],
-  });
-
-  // Cargar metadata del NFT
+  // Log para debuggear el estado de la alerta
   useEffect(() => {
-    async function fetchMetadata() {
-      if (!uriData) return;
+    console.log('📊 Alert state changed:', { showAlert, alertType, alertMessage });
+  }, [showAlert, alertType, alertMessage]);
 
-      try {
-        const uri = uriData.toString();
-        const httpsUri = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
-        
-        const response = await fetch(httpsUri);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
-        const data = await response.json();
-        setMetadata(data);
-
-        if (data.image) {
-          const imageUri = data.image.replace('ipfs://', 'https://ipfs.io/ipfs/');
-          setImageUrl(imageUri);
-        }
-      } catch (err) {
-        console.error('Error fetching metadata:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchMetadata();
-  }, [uriData]);
-
-  // Procesar datos del listing
+  // Log para debuggear cambios en el listing
   useEffect(() => {
-    if (listingData) {
-      console.log('NFT Details - Listing data received:', listingData);
-      // Los datos ahora vienen como objeto desde el contrato
-      const listing = listingData as {
-        tokenId: bigint;
-        seller: string;
-        price: bigint;
-        isActive: boolean;
-        listedAt: bigint;
-      };
-      console.log('NFT Details - Processed listing:', listing);
-      setListing(listing);
-    } else {
-      console.log('NFT Details - No listing data for token:', tokenId);
+    console.log('🏷️ Listing state changed for token', tokenId, ':', {
+      hasListing: !!listing,
+      isActive: listing?.isActive,
+      seller: listing?.seller,
+      price: listing ? listing.price.toString() : null
+    });
+  }, [listing, tokenId]);
+
+  // Cachear el listing activo cuando se carga por primera vez
+  useEffect(() => {
+    if (listing && listing.isActive && !cachedListing && !isPurchaseInProgress) {
+      console.log('💾 Caching active listing for token', tokenId);
+      setCachedListing(listing);
     }
-  }, [listingData, tokenId]);
+  }, [listing, cachedListing, isPurchaseInProgress, tokenId]);
 
-  const formatPrice = (price: bigint) => {
-    return (Number(price) / 1e18).toFixed(2);
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  const handleGoBack = () => {
-    router.back();
-  };
-
-  const handleBuy = () => {
-    if (!listing || !address || !tokenId) {
-      setAlertType('error');
-      setAlertMessage('Insufficient information to proceed with purchase');
-      setShowAlert(true);
-      return;
-    }
-
-    if (listing.seller.toLowerCase() === address.toLowerCase()) {
-      setAlertType('error');
-      setAlertMessage('You cannot buy your own NFT');
-      setShowAlert(true);
-      return;
-    }
-
-    // Mostrar confirmación antes de comprar
+  const handleBuyStart = (confirmBuyFn: () => Promise<void>) => {
+    console.log('🎬 handleBuyStart called with function:', typeof confirmBuyFn);
+    setIsPurchaseInProgress(true);
+    setConfirmBuyFunction(() => confirmBuyFn);
     setShowConfirmBuy(true);
+    console.log('✅ Showing confirmation dialog, purchase marked as in progress');
   };
 
-  const handleConfirmBuy = async () => {
-    if (!listing || !address || !tokenId) return;
+  const handleBuyComplete = async (success: boolean, message: string) => {
+    console.log('🎯 handleBuyComplete called:', { success, message });
     
-    setIsBuying(true);
-
-    try {
-      const userBalance = balanceData ? Number(balanceData) / 1e18 : 0;
-      const userParcels = parcelData ? Number(parcelData) : 0;
-      const userTokenCount = tokenCountData ? Number(tokenCountData) : 0;
-      const nftPrice = Number(listing.price) / 1e18;
-
-      console.log('Purchase Debug Info:');
-      console.log('- User Balance:', userBalance, 'FTK');
-      console.log('- User Parcels:', userParcels);
-      console.log('- User Token Count:', userTokenCount);
-      console.log('- NFT Price:', nftPrice, 'FTK');
-      console.log('- Balance Data Raw:', balanceData?.toString());
-
-      await buyNFT(address, tokenId, userBalance, userParcels, userTokenCount, nftPrice);
-
-      // Refrescar datos de parcelas y marketplace después de la compra exitosa
-      triggerTreesRefresh();
-      triggerMarketplaceRefresh();
-
-      setAlertType('success');
-      setAlertMessage('You have successfully purchased the NFT!');
-      setShowAlert(true);
-    } catch (error: any) {
-      setAlertType('error');
-      setAlertMessage(error.message || 'Error purchasing NFT');
-      setShowAlert(true);
-    } finally {
-      setIsBuying(false);
+    setShowConfirmBuy(false);
+    setAlertType(success ? 'success' : 'error');
+    
+    // Usar mensaje personalizado para compras exitosas
+    if (success && currentListing && tokenId) {
+      const price = formatPrice(currentListing.price);
+      const successMessage = NOTIFICATION_MESSAGES.nftPurchased.getMessage(tokenId, price);
+      console.log('✅ Setting success message:', successMessage);
+      setAlertMessage(successMessage);
+    } else {
+      console.log('❌ Setting error message:', message);
+      setAlertMessage(message);
     }
+    
+    console.log('🔔 Setting showAlert to true');
+    setShowAlert(true);
+    
+    // No actualizar datos inmediatamente para evitar que la página se refresque
+    // Los datos se actualizarán cuando el usuario regrese al marketplace
   };
 
-  const handleAlertClose = () => {
+  const handleAlertClose = async () => {
+    console.log('🔴 handleAlertClose called, alertType:', alertType);
     setShowAlert(false);
+    
+    // Si la alerta era de éxito, actualizar datos y redirigir al marketplace
     if (alertType === 'success') {
+      console.log('🔄 Updating user data and trees after successful purchase...');
+      try {
+        // Actualizar balance, datos del usuario y parcelas antes de redirigir
+        await Promise.all([
+          refreshBalance(),
+          refreshUserData()
+        ]);
+        
+        // Activar refresh de las parcelas para mostrar el nuevo NFT
+        triggerTreesRefresh();
+        console.log('🌳 Trees refresh triggered - parcels should update with new NFT');
+        console.log('✅ User data and trees updated successfully');
+      } catch (error) {
+        console.error('❌ Error updating user data:', error);
+      }
+      
+      console.log('🚀 Redirecting to marketplace');
       router.back();
     }
   };
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity.toLowerCase()) {
-      case 'legendary':
-        return '#FFD700'; // Dorado
-      case 'rare':
-        return '#4169E1'; // Azul
-      default:
-        return '#4CAF50'; // Verde
-    }
+  const handleConfirmBuyClose = () => {
+    setShowConfirmBuy(false);
+    setIsPurchaseInProgress(false);
+    console.log('❌ Purchase cancelled, resetting state');
   };
 
   if (!fontsLoaded) {
     return null;
   }
 
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <ThemedView style={styles.container}>
+          <StatusBar barStyle="dark-content" />
+          <PixelBackButton />
+          <ThemedView style={styles.loadingContainer}>
+            <ThemedText style={styles.loadingText}>Loading NFT details...</ThemedText>
+          </ThemedView>
+        </ThemedView>
+      </ProtectedRoute>
+    );
+  }
+
+  // Usar listing cacheado si estamos en proceso de compra y el listing original no está activo
+  const currentListing = (isPurchaseInProgress && cachedListing) ? cachedListing : listing;
+
+  if (!currentListing || !currentListing.isActive) {
+    console.log("🚨 NFT DETAILS ERROR STATE:", {
+      hasListing: !!listing,
+      isActive: listing?.isActive,
+      hasCachedListing: !!cachedListing,
+      isPurchaseInProgress: isPurchaseInProgress,
+      tokenId: tokenId,
+      currentListing: currentListing ? {
+        ...currentListing,
+        tokenId: currentListing.tokenId.toString(),
+        price: currentListing.price.toString(),
+        listedAt: currentListing.listedAt.toString()
+      } : null
+    });
+    
+    return (
+      <ProtectedRoute>
+        <ThemedView style={styles.container}>
+          <StatusBar barStyle="dark-content" />
+          <PixelBackButton />
+          <ThemedView style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>NFT not found or not listed for sale</ThemedText>
+          </ThemedView>
+        </ThemedView>
+      </ProtectedRoute>
+    );
+  }
+
+  const rarity = extractRarity(metadata?.attributes);
+  const rarityColor = rarity ? getRarityColor(rarity) : '#4CAF50';
+
   return (
     <ProtectedRoute>
       <ThemedView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <ThemedText style={styles.backButtonText}>← Back</ThemedText>
-        </TouchableOpacity>
+        <PixelBackButton />
         
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Imagen del NFT */}
-          <View style={styles.imageContainer}>
+          <ThemedView style={styles.imageContainer}>
             {imageUrl && (
-              <Image 
-                source={{ uri: imageUrl }} 
+              <Image
+                source={{ uri: imageUrl }}
                 style={styles.nftImage}
                 resizeMode="contain"
               />
             )}
-          </View>
-          
+          </ThemedView>
+
           {/* Información del NFT */}
-          <View style={styles.detailsContainer}>
+          <ThemedView style={styles.infoContainer}>
             {isLoading ? (
               <ThemedText style={styles.loadingText}>Loading details...</ThemedText>
             ) : (
@@ -260,12 +217,12 @@ export default function NFTDetailsScreen() {
                 <ThemedText style={styles.nftName}>
                   {metadata?.name || `NFT #${tokenId}`}
                 </ThemedText>
-                
-                <ThemedText style={styles.nftId}>
+
+                <ThemedText style={styles.tokenId}>
                   ID: #{tokenId}
                 </ThemedText>
-                
-                <ThemedText style={styles.nftDescription}>
+
+                <ThemedText style={styles.descriptionText}>
                   {metadata?.description || 'Forest NFT'}
                 </ThemedText>
                 
@@ -273,74 +230,76 @@ export default function NFTDetailsScreen() {
                 {metadata?.attributes?.map((attr, index) => {
                   if (attr.trait_type.toLowerCase() === 'rarity') {
                     return (
-                      <View key={index} style={styles.rarityContainer}>
+                      <ThemedView key={index} style={styles.rarityContainer}>
                         <ThemedText style={styles.rarityLabel}>Rarity: </ThemedText>
                         <ThemedText style={[styles.rarityValue, { color: getRarityColor(attr.value.toString()) }]}>
                           {attr.value.toString().charAt(0).toUpperCase() + attr.value.toString().slice(1)}
                         </ThemedText>
-                      </View>
+                      </ThemedView>
                     );
                   }
                   return null;
                 })}
                 
                 {/* Información del listing */}
-                <View style={styles.priceContainer}>
+                <ThemedView style={styles.priceContainer}>
                   <Image 
                     source={require("@/assets/images/coin.png")}
                     style={styles.coinIcon}
                     resizeMode="contain"
                   />
                   <ThemedText style={styles.priceText}>
-                    {listing ? `${formatPrice(listing.price)} FTK` : 'Loading price...'}
+                    {currentListing ? `${formatPrice(currentListing.price)} FTK` : 'Loading price...'}
                   </ThemedText>
-                </View>
-                
+                </ThemedView>
+
                 <ThemedText style={styles.ownerText}>
-                  Owner: {listing ? formatAddress(listing.seller) : 'Loading owner...'}
+                  Owner: {currentListing ? formatAddress(currentListing.seller) : 'Loading owner...'}
                 </ThemedText>
                 
-                {listing && (
+                {currentListing && (
                   <ThemedText style={styles.dateText}>
-                    Listed: {new Date(Number(listing.listedAt) * 1000).toLocaleDateString()}
+                    Listed: {new Date(Number(currentListing.listedAt) * 1000).toLocaleDateString()}
                   </ThemedText>
                 )}
-                
-                {/* Botón Comprar */}
-                <TouchableOpacity 
-                  style={[styles.buyButton, isBuying && styles.buyButtonDisabled]} 
-                  onPress={handleBuy}
-                  disabled={isBuying}
-                >
-                  <Image 
-                    source={require("@/assets/images/coin.png")}
-                    style={styles.buyButtonIcon}
-                    resizeMode="contain"
+
+                {/* Botón de compra */}
+                {currentListing && tokenId && (
+                  <NFTBuyButton
+                    listing={currentListing}
+                    tokenId={tokenId}
+                    onBuyStart={handleBuyStart}
+                    onBuyComplete={handleBuyComplete}
                   />
-                  <View style={styles.buyButtonTextContainer}>
-                    <ThemedText style={styles.buyButtonText}>
-                      {isBuying ? 'Buying...' : 'Buy Now'}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
+                )}
               </>
             )}
-          </View>
+          </ThemedView>
         </ScrollView>
-        
+
+        {/* Alertas */}
         <NFTBuyAlert
           show={showAlert}
-          onClose={handleAlertClose}
           type={alertType}
           message={alertMessage}
+          onClose={handleAlertClose}
         />
-        
+
         <ConfirmNFTBuyAlert
           show={showConfirmBuy}
-          onClose={() => setShowConfirmBuy(false)}
-          onConfirm={handleConfirmBuy}
-          nftName={metadata?.name || `NFT #${tokenId}`}
-          price={listing ? formatPrice(listing.price) : '0'}
+          nftName={metadata?.name || `Tree #${tokenId}`}
+          price={currentListing ? formatPrice(currentListing.price) : '0'}
+          onConfirm={() => {
+            console.log('🎯 Confirm button clicked, confirmBuyFunction:', typeof confirmBuyFunction);
+            if (confirmBuyFunction) {
+              console.log('✅ Executing confirmBuyFunction');
+              confirmBuyFunction();
+            } else {
+              console.log('❌ confirmBuyFunction is null/undefined');
+            }
+            handleConfirmBuyClose();
+          }}
+          onClose={handleConfirmBuyClose}
         />
       </ThemedView>
     </ProtectedRoute>
@@ -354,30 +313,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    backgroundColor: '#4a7c59',
-    borderWidth: 2,
-    borderColor: '#2d5016',
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-    elevation: 2,
-  },
-  backButtonText: {
-    fontFamily: 'PressStart2P_400Regular',
-    fontSize: 10,
-    color: 'white',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    backgroundColor: '#fef5eb',
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    borderRadius: 0,
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#4a7c59',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#fef5eb',
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    borderRadius: 0,
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#d32f2f',
+    textAlign: 'center',
+    lineHeight: 14,
   },
   imageContainer: {
     height: 250,
@@ -390,18 +359,24 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  detailsContainer: {
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(74, 124, 89, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#4a7c59',
+  },
+  infoContainer: {
     backgroundColor: '#fef5eb',
     borderWidth: 3,
     borderColor: '#2d5016',
     padding: 15,
     gap: 8,
-  },
-  loadingText: {
-    fontFamily: 'PressStart2P_400Regular',
-    fontSize: 10,
-    color: '#4a7c59',
-    textAlign: 'center',
   },
   nftName: {
     fontFamily: 'PressStart2P_400Regular',
@@ -410,21 +385,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
   },
-  nftId: {
+  tokenId: {
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 10,
     color: '#666',
     lineHeight: 14,
     textAlign: 'center',
     marginBottom: 5,
-  },
-  nftDescription: {
-    fontFamily: 'PressStart2P_400Regular',
-    fontSize: 8,
-    color: '#4a7c59',
-    lineHeight: 12,
-    textAlign: 'center',
-    marginBottom: 8,
   },
   rarityContainer: {
     flexDirection: 'row',
@@ -477,44 +444,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  buyButton: {
-    backgroundColor: '#4a7c59',
-    borderRadius: 10,
-    paddingVertical: 18,
-    paddingHorizontal: 30,
-    borderWidth: 3,
-    borderColor: '#2d5016',
-    marginTop: 10,
-    alignItems: 'center',
-    flexDirection: 'row',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  buyButtonDisabled: {
-    backgroundColor: '#999999',
-    borderColor: '#666666',
-  },
-  buyButtonIcon: {
-    width: 30,
-    height: 30,
-    position: 'absolute',
-    left: 30,
-  },
-  buyButtonTextContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buyButtonText: {
+  descriptionText: {
     fontFamily: 'PressStart2P_400Regular',
-    fontSize: 14,
-    color: 'white',
+    fontSize: 8,
+    color: '#4a7c59',
+    lineHeight: 12,
     textAlign: 'center',
+    marginBottom: 8,
   },
 }); 

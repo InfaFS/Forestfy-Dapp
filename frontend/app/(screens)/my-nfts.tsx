@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, StatusBar, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -13,6 +13,10 @@ import { ConfirmNFTListAlert } from '@/components/ConfirmNFTListAlert';
 import { ConfirmNFTUnlistAlert } from '@/components/ConfirmNFTUnlistAlert';
 import { useTrees } from '@/contexts/TreesContext';
 import { useMarketplace } from '@/contexts/MarketplaceContext';
+import { useUserNFTsWithListing } from '@/hooks/useUserNFTsWithListing';
+import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
+import { EventToast } from '@/components/common/EventToast';
+
 
 interface NFTData {
   tokenId: string;
@@ -49,39 +53,42 @@ export default function MyNFTsScreen() {
   const [showConfirmList, setShowConfirmList] = useState(false);
   const [showConfirmUnlist, setShowConfirmUnlist] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<NFTData | null>(null);
-
-  // Obtener cuenta activa
-  const activeAccount = useActiveAccount();
-  const address = activeAccount?.address || '';
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'listed' | 'unlisted' | 'sold'>('listed');
 
   // Contextos para refrescar datos
   const { triggerRefresh: triggerTreesRefresh } = useTrees();
   const { triggerRefresh: triggerMarketplaceRefresh } = useMarketplace();
 
+  // Hook personalizado para NFTs del usuario con estado de listing
+  const { address, userNFTsWithListingData, refetchUserNFTs, isLoading: dataLoading } = useUserNFTsWithListing();
+
+  // Hook para escuchar eventos específicos del usuario (solo para refrescar datos, sin notificaciones)
+  useMarketplaceEvents({
+    onNFTListed: (tokenId, seller, price) => {
+      // Solo refrescar datos si es del usuario, sin notificación
+      if (seller.toLowerCase() === address.toLowerCase()) {
+        // Refresh automático via useUserNFTsWithListing
+      }
+    },
+    onNFTUnlisted: (tokenId, seller) => {
+      // Solo refrescar datos si es del usuario, sin notificación
+      if (seller.toLowerCase() === address.toLowerCase()) {
+        // Refresh automático via useUserNFTsWithListing
+      }
+    },
+    onNFTSold: (tokenId, seller, buyer, price) => {
+      // Solo refrescar datos si el usuario está involucrado, sin notificación
+      if (seller.toLowerCase() === address.toLowerCase() || buyer.toLowerCase() === address.toLowerCase()) {
+        // Refresh automático via useUserNFTsWithListing
+      }
+    },
+  });
+
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
     PressStart2P_400Regular,
-  });
-
-  // Obtener cantidad de tokens del usuario
-  const { data: tokenCountData } = useReadContract({
-    contract: NFTContract,
-    method: "function getUserTokenCount(address user) view returns (uint256)",
-    params: [address],
-  });
-
-  // Obtener tokens del usuario
-  const { data: userTokensData } = useReadContract({
-    contract: NFTContract,
-    method: "function tokensOfOwner(address owner) view returns (uint256[])",
-    params: [address],
-  });
-
-  // Obtener datos completos de NFTs con estado de listado usando el marketplace
-  const { data: userNFTsWithListingData } = useReadContract({
-    contract: MarketplaceContract,
-    method: "function getUserNFTsWithListingStatus(address user) view returns (uint256[] tokenIds, bool[] isListedArray, uint256[] prices)",
-    params: [address],
   });
 
   // Cargar datos de NFTs del usuario
@@ -209,6 +216,11 @@ export default function MyNFTsScreen() {
       setAlertMessage('Success! NFT listed successfully');
       setShowAlert(true);
       
+      // Refrescar datos desde el contrato para evitar problemas de cache
+      setTimeout(async () => {
+        await refetchUserNFTs();
+      }, 1000);
+      
       // Actualizar marketplace y NFTs automáticamente
       triggerMarketplaceRefresh();
       triggerTreesRefresh();
@@ -261,6 +273,11 @@ export default function MyNFTsScreen() {
       setAlertMessage('Success! NFT unlisted successfully');
       setShowAlert(true);
       
+      // Refrescar datos desde el contrato para evitar problemas de cache
+      setTimeout(async () => {
+        await refetchUserNFTs();
+      }, 1000);
+      
       // Actualizar marketplace y NFTs automáticamente
       triggerMarketplaceRefresh();
       triggerTreesRefresh();
@@ -282,6 +299,23 @@ export default function MyNFTsScreen() {
     setShowAlert(false);
   };
 
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    try {
+      await refetchUserNFTs();
+      triggerMarketplaceRefresh();
+      triggerTreesRefresh();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToastHide = () => {
+    setShowToast(false);
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -294,7 +328,18 @@ export default function MyNFTsScreen() {
           <ThemedText style={styles.backButtonText}>← Back</ThemedText>
         </TouchableOpacity>
         
-        <ThemedText style={styles.title}>My NFTs</ThemedText>
+        <View style={styles.headerContainer}>
+          <ThemedText style={styles.title}>My NFTs</ThemedText>
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={handleRefresh}
+            disabled={isLoading}
+          >
+            <ThemedText style={styles.refreshButtonText}>
+              {isLoading ? '↻' : '⟲'}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
         
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {isLoading ? (
@@ -401,6 +446,15 @@ export default function MyNFTsScreen() {
           }}
           nftName={selectedNFT?.metadata?.name || `NFT #${selectedNFT?.tokenId}`}
         />
+
+        {/* Toast para eventos en tiempo real */}
+        <EventToast
+          visible={showToast}
+          message={toastMessage}
+          type={toastType}
+          onHide={handleToastHide}
+          duration={4000}
+        />
       </ThemedView>
     </ProtectedRoute>
   );
@@ -432,12 +486,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: 'white',
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
   title: {
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 16,
     color: '#2d5016',
     textAlign: 'center',
-    marginBottom: 20,
+  },
+  refreshButton: {
+    padding: 8,
+    backgroundColor: '#4a7c59',
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    elevation: 2,
+  },
+  refreshButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: 'white',
   },
   scrollView: {
     flex: 1,

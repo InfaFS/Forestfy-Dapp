@@ -4,8 +4,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { useRouter } from "expo-router";
-import { useEffect, useState, useRef } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { NFTContract, TokenContract } from "@/constants/thirdweb";
 import { claimFirstParcel, buyParcel } from "@/constants/api";
@@ -89,9 +89,19 @@ export default function TreesScreen() {
 
 	// Add effect to refetch when refreshTrigger changes
 	useEffect(() => {
+		console.log('🔄 Trees refreshTrigger changed:', refreshTrigger);
 		refetchNFTs();
 		refetchParcels();
 	}, [refreshTrigger, refetchNFTs, refetchParcels]);
+
+	// Add focus effect to refetch when tab becomes active
+	useFocusEffect(
+		useCallback(() => {
+			console.log('👁️ Trees tab gained focus, refreshing data...');
+			refetchNFTs();
+			refetchParcels();
+		}, [refetchNFTs, refetchParcels])
+	);
 
 	useEffect(() => {
 		const floatingAnimation = Animated.loop(

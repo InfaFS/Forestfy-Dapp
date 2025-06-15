@@ -16,6 +16,8 @@ import { WalletProvider } from "@/contexts/WalletContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { TreesProvider } from "@/contexts/TreesContext";
 import { MarketplaceProvider } from "@/contexts/MarketplaceContext";
+import { GlobalNotifications } from "@/components/GlobalNotifications";
+import { NotificationDisplay } from "@/components/NotificationDisplay";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +46,8 @@ function RootLayoutNav() {
 				backgroundColor={Colors[colorScheme ?? "light"].background}
 				barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
 			/>
+			<GlobalNotifications />
+			<NotificationDisplay />
 			<Stack
 				screenOptions={{
 					animation: "slide_from_bottom",
@@ -106,7 +110,7 @@ export default function RootLayout() {
 					<NotificationProvider>
 						<TreesProvider>
 							<MarketplaceProvider>
-								<RootLayoutNav />
+							<RootLayoutNav />
 							</MarketplaceProvider>
 						</TreesProvider>
 					</NotificationProvider>

@@ -11,7 +11,12 @@ export function TreesProvider({ children }: { children: React.ReactNode }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const triggerRefresh = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1);
+    console.log('🌳 TreesContext: triggerRefresh called, incrementing trigger');
+    setRefreshTrigger(prev => {
+      const newValue = prev + 1;
+      console.log('🌳 TreesContext: refreshTrigger updated from', prev, 'to', newValue);
+      return newValue;
+    });
   }, []);
 
   return (

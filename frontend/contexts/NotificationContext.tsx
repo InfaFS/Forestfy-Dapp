@@ -26,11 +26,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     
     setNotifications(prev => [...prev, newNotification]);
 
-    // Auto-hide after duration (default 3000ms)
-    const duration = notification.duration || 3000;
-    setTimeout(() => {
-      hideNotification(id);
-    }, duration);
+    // Solo auto-hide si se especifica una duración
+    if (notification.duration && notification.duration > 0) {
+      setTimeout(() => {
+        hideNotification(id);
+      }, notification.duration);
+    }
+    // Si no hay duration o es 0, la notificación permanece hasta que se dismiss manualmente
   };
 
   const hideNotification = (id: string) => {
@@ -55,10 +57,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 }
 
-export function useNotification() {
+export function useNotifications() {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error('useNotification must be used within a NotificationProvider');
+    throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
 } 
