@@ -30,62 +30,38 @@ export function NFTBuyButton({ listing, tokenId, onBuyStart, onBuyComplete }: NF
   const { triggerRefresh: triggerMarketplaceRefresh } = useMarketplace();
 
   const handleBuy = () => {
-    console.log('🎬 handleBuy called');
-    
     if (!listing || !address || !tokenId) {
-      console.log('❌ Missing data in handleBuy');
       onBuyComplete(false, 'Insufficient information to proceed with purchase');
       return;
     }
 
     if (listing.seller.toLowerCase() === address.toLowerCase()) {
-      console.log('❌ User trying to buy own NFT');
       onBuyComplete(false, 'You cannot buy your own NFT');
       return;
     }
 
-    console.log('✅ Showing purchase confirmation, passing handleConfirmBuy function');
     // Mostrar confirmación antes de comprar
     onBuyStart(handleConfirmBuy);
   };
 
   const handleConfirmBuy = async () => {
-    console.log('🚀 handleConfirmBuy started');
-    
     if (!listing || !address || !tokenId) {
-      console.log('❌ Missing required data:', { listing: !!listing, address: !!address, tokenId: !!tokenId });
       return;
     }
     
     setIsBuying(true);
-    console.log('⏳ Set isBuying to true');
 
     try {
       const nftPrice = Number(listing.price) / 1e18;
-
-      console.log('🛒 Starting purchase process...');
-      console.log('- User Balance:', userBalance, 'FTK');
-      console.log('- User Parcels:', userParcels);
-      console.log('- User Token Count:', userTokenCount);
-      console.log('- NFT Price:', nftPrice, 'FTK');
-
-      console.log('📞 Calling buyNFT API...');
       await buyNFT(address, tokenId, userBalance, userParcels, userTokenCount, nftPrice);
-      console.log('✅ buyNFT API completed successfully');
 
-      // No refrescar datos inmediatamente para evitar que la página se actualice
-      // Los datos se refrescarán cuando el usuario regrese al marketplace
-
-      console.log('📢 Calling onBuyComplete with success...');
+      // Solo notificar el éxito, sin actualizar datos automáticamente
+      console.log('🎉 Compra exitosa, esperando confirmación del usuario...');
       onBuyComplete(true, 'NFT purchased successfully!');
-      console.log('✅ onBuyComplete called successfully');
     } catch (error) {
       console.error('❌ Error in handleConfirmBuy:', error);
-      console.log('📢 Calling onBuyComplete with error...');
       onBuyComplete(false, error instanceof Error ? error.message : 'Failed to purchase NFT');
-      console.log('✅ onBuyComplete error called');
     } finally {
-      console.log('🏁 Setting isBuying to false');
       setIsBuying(false);
     }
   };

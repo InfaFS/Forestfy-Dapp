@@ -37,13 +37,9 @@ export default function ConfigScreen() {
 	const [toastType, setToastType] = useState<'success' | 'error'>('success');
 	const { triggerRefresh } = useTrees();
 
-	// Log de la dirección de wallet cuando se carga la pantalla
+	// Efecto para detectar cambios en la wallet
 	useEffect(() => {
-		if (account?.address) {
-			console.log("🔗 [CONFIG] Wallet Address:", account.address);
-		} else {
-			console.log("❌ [CONFIG] No wallet connected");
-		}
+		// Wallet connection state changed
 	}, [account?.address]);
 
 	// Verificar si ya reclamó la recompensa

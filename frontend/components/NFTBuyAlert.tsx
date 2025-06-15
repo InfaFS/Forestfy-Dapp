@@ -11,8 +11,6 @@ interface NFTBuyAlertProps {
 
 export const NFTBuyAlert: React.FC<NFTBuyAlertProps> = ({ show, onClose, type, message }) => {
   const alertOpacity = useRef(new Animated.Value(0)).current;
-  
-  console.log('🚨 NFTBuyAlert props:', { show, type, message });
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({

@@ -5,7 +5,7 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 import { NOTIFICATION_STYLES } from '@/constants/NotificationStyles';
 
 export function NotificationDisplay() {
-  const { notifications, hideNotification } = useNotifications();
+  const { notifications, removeNotification } = useNotifications();
   
   const [fontsLoaded] = useFonts({
     PressStart2P_400Regular,
@@ -16,23 +16,24 @@ export function NotificationDisplay() {
   }
 
   const handleDismiss = (id: string) => {
-    hideNotification(id);
+    removeNotification(id);
   };
 
   return (
     <View style={styles.container}>
       {notifications.map((notification) => {
         // Determinar si es una notificación de venta NFT (más pequeña)
-        const isNFTSale = notification.title?.includes('NFT Sold') || notification.message?.includes('sold');
+        const isNFTSale = notification.type === 'nft_sold' || notification.type === 'nft_bought';
         
         return (
           <Animated.View
             key={notification.id}
             style={[
               isNFTSale ? styles.smallNotification : styles.notification,
-              notification.type === 'success' && styles.successNotification,
-              notification.type === 'error' && styles.errorNotification,
-              notification.type === 'info' && styles.infoNotification,
+              notification.type === 'nft_sold' && styles.successNotification,
+              notification.type === 'nft_bought' && styles.successNotification,
+              notification.type === 'nft_listed' && styles.infoNotification,
+              notification.type === 'nft_unlisted' && styles.infoNotification,
             ]}
           >
             <View style={styles.content}>
@@ -58,7 +59,7 @@ export function NotificationDisplay() {
               onPress={() => handleDismiss(notification.id)}
             >
               <Text style={styles.dismissText}>
-                {isNFTSale ? "Aceptar" : "Dismiss"}
+                {notification.type === 'nft_sold' ? "Aceptar" : "Dismiss"}
               </Text>
             </TouchableOpacity>
           </Animated.View>

@@ -1,5 +1,25 @@
+export const formatTokenAmount = (amount: string | number): string => {
+  const numAmount = typeof amount === "string" ? Number(amount) : amount;
+
+  // Si es muy pequeño (notación científica), convertir desde wei
+  if (numAmount < 0.001 && numAmount > 0) {
+    const fromWei = numAmount * 1e18;
+    return fromWei.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  // Para números normales, formatear con decimales apropiados
+  return numAmount.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+};
+
 export const formatPrice = (price: bigint) => {
-  return (Number(price) / 1e18).toFixed(2);
+  const numPrice = Number(price) / 1e18;
+  return formatTokenAmount(numPrice);
 };
 
 export const formatAddress = (address: string) => {

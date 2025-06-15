@@ -18,6 +18,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RewardAlert } from "@/components/RewardAlert";
 import { ConfirmTreeAlert } from "@/components/ConfirmTreeAlert";
 import { ConfirmRewardAlert } from "@/components/ConfirmRewardAlert";
+import { DeviceEventEmitter } from 'react-native';
 
 // Componente TimeSlider personalizado
 const TimeSlider: React.FC<{
@@ -191,7 +192,10 @@ export default function FocusScreen() {
 	const { data: parcelData } = useReadContract({
 		contract: NFTContract,
 		method: "function getUserParcels(address user) view returns (uint256)",
-		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		params: [account?.address || ""],
+		queryOptions: {
+			enabled: !!account?.address,
+		},
 	});
 
 	useEffect(() => {
@@ -218,10 +222,34 @@ export default function FocusScreen() {
 		}
 	}, [account?.address]);
 
+	// Función para actualizar el balance usando DeviceEventEmitter con reintentos
+	const updateBalance = useCallback(() => {
+		console.log('🔄 Actualizando balance en Focus...');
+		// Actualización inmediata
+		DeviceEventEmitter.emit('refreshWalletData');
+		
+		// Reintento después de 1 segundo
+		setTimeout(() => {
+			console.log('🔄 Reintento 1 - Actualizando balance...');
+			DeviceEventEmitter.emit('refreshWalletData');
+		}, 1000);
+		
+		// Reintento después de 3 segundos
+		setTimeout(() => {
+			console.log('🔄 Reintento 2 - Actualizando balance...');
+			DeviceEventEmitter.emit('refreshWalletData');
+		}, 3000);
+		
+		// Actualización local también
+		setTimeout(() => {
+			fetchBalance();
+		}, 1500);
+	}, [fetchBalance]);
+
 	useEffect(() => {
 		fetchBalance();
-		// Actualizar el balance cada 30 segundos
-		const interval = setInterval(fetchBalance, 30000);
+		// Actualizar el balance cada 60 segundos (reducido de 30)
+		const interval = setInterval(fetchBalance, 60000);
 		return () => clearInterval(interval);
 	}, [fetchBalance]);
 
@@ -318,6 +346,11 @@ export default function FocusScreen() {
 		try {
 			// Primero reducimos el balance
 			await reduceBalance(account.address, Number(inputValue));
+			
+			// Actualizar balance después de invertir tokens
+			console.log('💰 Tokens invertidos, actualizando balance...');
+			updateBalance();
+			
 			// Si la reducción fue exitosa, iniciamos el timer
 			setTimerActive(true);
 		} catch (error) {
@@ -364,7 +397,11 @@ export default function FocusScreen() {
 			const originalAmount = Number(inputValue);
 			const totalAmount = originalAmount + potentialReward;
 			await claimStaking(account.address, totalAmount);
-			await fetchBalance();
+			
+			// Actualizar balance después de reclamar tokens
+			console.log('🎉 Tokens reclamados, actualizando balance...');
+			updateBalance();
+			
 			// Resetear completamente el estado
 			setTimerCompleted(false);
 			setTimerActive(false);
@@ -402,9 +439,14 @@ export default function FocusScreen() {
 			await mintTree(account.address, amount + potentialReward);
 			setSuccess("NFT created successfully!");
 			setShowSuccessAlert(true);
-			await fetchBalance();
+			
+			// Actualizar balance después de mintear NFT
+			console.log('🌳 NFT minteado, actualizando balance...');
+			updateBalance();
+			
 			// Trigger trees refresh
 			triggerRefresh();
+			
 			// Resetear completamente el estado
 			setTimerCompleted(false);
 			setTimerActive(false);
@@ -737,6 +779,8 @@ export default function FocusScreen() {
 						}
 					}}
 				/>
+
+
 			</ThemedView>
 		</ProtectedRoute>
 	);
@@ -1173,4 +1217,5 @@ const styles = StyleSheet.create({
 		color: '#4a7c59',
 		textAlign: 'center',
 	},
+
 }); 

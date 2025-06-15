@@ -13,7 +13,7 @@ import { useTrees } from "@/contexts/TreesContext";
 import { ParcelAlert } from "@/components/ParcelAlert";
 
 const PARCEL_IMAGES = {
-	0: require("@/assets/images/parcela.png"), // Parcela vacía sin árboles
+	0: require("@/assets/images/parcela.png"),
 	1: require("@/assets/images/parcela_1.png"),
 	2: require("@/assets/images/parcela_2.png"),
 	3: require("@/assets/images/parcela_3.png"),
@@ -50,6 +50,9 @@ export default function TreesScreen() {
 		contract: NFTContract,
 		method: "function tokensOfOwner(address owner) view returns (uint256[] memory)",
 		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		queryOptions: {
+			enabled: !!account?.address,
+		},
 	});
 
 	// Leer la cantidad de parcelas del usuario
@@ -57,6 +60,9 @@ export default function TreesScreen() {
 		contract: NFTContract,
 		method: "function getUserParcels(address user) view returns (uint256)",
 		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		queryOptions: {
+			enabled: !!account?.address,
+		},
 	});
 
 	// Leer el balance de tokens
@@ -64,6 +70,9 @@ export default function TreesScreen() {
 		contract: TokenContract,
 		method: "function virtualBalance(address) view returns (uint256)",
 		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		queryOptions: {
+			enabled: !!account?.address,
+		},
 	});
 
 	useEffect(() => {
@@ -89,7 +98,6 @@ export default function TreesScreen() {
 
 	// Add effect to refetch when refreshTrigger changes
 	useEffect(() => {
-		console.log('🔄 Trees refreshTrigger changed:', refreshTrigger);
 		refetchNFTs();
 		refetchParcels();
 	}, [refreshTrigger, refetchNFTs, refetchParcels]);
@@ -97,16 +105,12 @@ export default function TreesScreen() {
 	// Add focus effect to refetch when tab becomes active (only if no recent refresh)
 	useFocusEffect(
 		useCallback(() => {
-			console.log('👁️ Trees tab gained focus');
 			// Only refresh if it's been more than 2 seconds since last refresh trigger
 			const now = Date.now();
 			const lastRefreshTime = refreshTrigger * 1000; // Approximate time
 			if (now - lastRefreshTime > 2000) {
-				console.log('👁️ Refreshing data on focus (no recent refresh)');
 				refetchNFTs();
 				refetchParcels();
-			} else {
-				console.log('👁️ Skipping refresh on focus (recent refresh detected)');
 			}
 		}, [refreshTrigger, refetchNFTs, refetchParcels])
 	);
@@ -246,20 +250,12 @@ export default function TreesScreen() {
 							<ThemedText style={[styles.noParcelsText, { fontFamily: 'PressStart2P_400Regular' }]}>
 								You don't have parcels :(
 							</ThemedText>
-							<TouchableOpacity
-								style={[
-									styles.customButton,
-									{ opacity: isClaimingParcel ? 0.5 : 1 }
-								]}
+							<ThemedButton
+								title={isClaimingParcel ? "Getting..." : "Claim a parcel for free!"}
 								onPress={handleClaimFirstParcel}
 								disabled={isClaimingParcel}
-							>
-								<View style={styles.textContainer}>
-									<ThemedText style={styles.customButtonText}>
-										{isClaimingParcel ? "Getting..." : "Claim a parcel for free!"}
-									</ThemedText>
-								</View>
-							</TouchableOpacity>
+								style={styles.claimButton}
+							/>
 						</View>
 					) : (
 						<>
@@ -329,20 +325,22 @@ export default function TreesScreen() {
 									{userParcels > 1 ? `Parcel ${currentParcel} is ready to plant trees` : "Your parcel is ready to plant trees"}
 								</ThemedText>
 							)}
+							
+
 						</>
 					)}
 				</ThemedView>
-			</ThemedView>
-
+				
 			{/* Parcel Alert */}
-			<ParcelAlert
-				show={showParcelAlert}
-				message={parcelAlertMessage}
+				<ParcelAlert
+					show={showParcelAlert}
+					message={parcelAlertMessage}
 				onClose={() => {
 					setShowParcelAlert(false);
 					setParcelAlertMessage("");
 				}}
-			/>
+				/>
+			</ThemedView>
 		</ProtectedRoute>
 	);
 }
@@ -469,37 +467,5 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontFamily: 'PressStart2P_400Regular',
 	},
-	buyParcelContainer: {
-		marginTop: 20,
-		alignItems: 'center',
-		gap: 10,
-	},
-	buyParcelText: {
-		fontSize: 12,
-		textAlign: 'center',
-	},
-	buyParcelButton: {
-		width: 200,
-	},
-	customButton: {
-		backgroundColor: '#4a7c59',
-		borderRadius: 10,
-		paddingVertical: 15,
-		paddingHorizontal: 25,
-		borderWidth: 2,
-		borderColor: '#2d5016',
-		minWidth: 240,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	textContainer: {
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	customButtonText: {
-		fontFamily: 'PressStart2P_400Regular',
-		fontSize: 14,
-		color: 'white',
-		textAlign: 'center',
-	},
+
 }); 

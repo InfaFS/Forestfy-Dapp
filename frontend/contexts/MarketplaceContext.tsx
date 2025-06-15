@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 
 interface MarketplaceContextType {
   refreshTrigger: number;
@@ -13,6 +14,16 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const triggerRefresh = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
   }, []);
+
+  // Listen for refresh events from notifications
+  useEffect(() => {
+    const handleRefresh = () => {
+      triggerRefresh();
+    };
+
+    const subscription = DeviceEventEmitter.addListener('refreshMarketplaceData', handleRefresh);
+    return () => subscription.remove();
+  }, [triggerRefresh]);
 
   return (
     <MarketplaceContext.Provider value={{ refreshTrigger, triggerRefresh }}>

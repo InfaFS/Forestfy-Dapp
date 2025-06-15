@@ -16,6 +16,7 @@ import { PixelBackButton } from '@/components/common/PixelBackButton';
 import { formatPrice, formatAddress, formatDate, extractRarity, getRarityColor } from '@/utils/nftHelpers';
 import { NFTBuyButton } from '@/components/marketplace/NFTBuyButton';
 import { NOTIFICATION_MESSAGES } from '@/constants/NotificationStyles';
+import { DeviceEventEmitter } from 'react-native';
 
 interface Listing {
   tokenId: bigint;
@@ -50,40 +51,50 @@ export default function NFTDetailsScreen() {
   const { refreshBalance } = useWallet();
   const { triggerRefresh: triggerTreesRefresh } = useTrees();
 
-  // Log para debuggear el estado de la alerta
-  useEffect(() => {
-    console.log('📊 Alert state changed:', { showAlert, alertType, alertMessage });
-  }, [showAlert, alertType, alertMessage]);
-
-  // Log para debuggear cambios en el listing
-  useEffect(() => {
-    console.log('🏷️ Listing state changed for token', tokenId, ':', {
-      hasListing: !!listing,
-      isActive: listing?.isActive,
-      seller: listing?.seller,
-      price: listing ? listing.price.toString() : null
-    });
-  }, [listing, tokenId]);
-
   // Cachear el listing activo cuando se carga por primera vez
   useEffect(() => {
     if (listing && listing.isActive && !cachedListing && !isPurchaseInProgress) {
-      console.log('💾 Caching active listing for token', tokenId);
       setCachedListing(listing);
     }
   }, [listing, cachedListing, isPurchaseInProgress, tokenId]);
 
+  // Función para actualizar datos del comprador con reintentos agresivos
+  const updateBuyerDataAfterPurchase = () => {
+    console.log('🔄 Actualizando datos del comprador después de compra exitosa...');
+    
+    // Actualización inmediata
+    DeviceEventEmitter.emit('refreshWalletData');
+    DeviceEventEmitter.emit('refreshTreesData');
+    
+    // Reintento después de 1 segundo (confirmación de transacción)
+    setTimeout(() => {
+      console.log('🔄 Reintento 1 - Actualizando datos del comprador...');
+      DeviceEventEmitter.emit('refreshWalletData');
+      DeviceEventEmitter.emit('refreshTreesData');
+    }, 1000);
+    
+    // Reintento después de 3 segundos (delay de red)
+    setTimeout(() => {
+      console.log('🔄 Reintento 2 - Actualizando datos del comprador...');
+      DeviceEventEmitter.emit('refreshWalletData');
+      DeviceEventEmitter.emit('refreshTreesData');
+    }, 3000);
+    
+    // Reintento después de 5 segundos (asegurar actualización)
+    setTimeout(() => {
+      console.log('🔄 Reintento 3 - Actualizando datos del comprador...');
+      DeviceEventEmitter.emit('refreshWalletData');
+      DeviceEventEmitter.emit('refreshTreesData');
+    }, 5000);
+  };
+
   const handleBuyStart = (confirmBuyFn: () => Promise<void>) => {
-    console.log('🎬 handleBuyStart called with function:', typeof confirmBuyFn);
     setIsPurchaseInProgress(true);
     setConfirmBuyFunction(() => confirmBuyFn);
     setShowConfirmBuy(true);
-    console.log('✅ Showing confirmation dialog, purchase marked as in progress');
   };
 
   const handleBuyComplete = async (success: boolean, message: string) => {
-    console.log('🎯 handleBuyComplete called:', { success, message });
-    
     setShowConfirmBuy(false);
     setAlertType(success ? 'success' : 'error');
     
@@ -91,51 +102,34 @@ export default function NFTDetailsScreen() {
     if (success && currentListing && tokenId) {
       const price = formatPrice(currentListing.price);
       const successMessage = NOTIFICATION_MESSAGES.nftPurchased.getMessage(tokenId, price);
-      console.log('✅ Setting success message:', successMessage);
       setAlertMessage(successMessage);
     } else {
-      console.log('❌ Setting error message:', message);
       setAlertMessage(message);
     }
     
-    console.log('🔔 Setting showAlert to true');
     setShowAlert(true);
-    
-    // No actualizar datos inmediatamente para evitar que la página se refresque
-    // Los datos se actualizarán cuando el usuario regrese al marketplace
   };
 
   const handleAlertClose = async () => {
-    console.log('🔴 handleAlertClose called, alertType:', alertType);
     setShowAlert(false);
     
-    // Si la alerta era de éxito, actualizar datos y redirigir al marketplace
+    // Si la alerta era de éxito, actualizar datos con reintentos y redirigir
     if (alertType === 'success') {
-      console.log('🔄 Updating user data and trees after successful purchase...');
-      try {
-        // Actualizar balance, datos del usuario y parcelas antes de redirigir
-        await Promise.all([
-          refreshBalance(),
-          refreshUserData()
-        ]);
-        
-        // Activar refresh de las parcelas para mostrar el nuevo NFT
-        triggerTreesRefresh();
-        console.log('🌳 Trees refresh triggered - parcels should update with new NFT');
-        console.log('✅ User data and trees updated successfully');
-      } catch (error) {
-        console.error('❌ Error updating user data:', error);
-      }
+      console.log('🎉 Compra exitosa confirmada, actualizando datos del comprador...');
       
-      console.log('🚀 Redirecting to marketplace');
-      router.back();
+      // Usar el sistema de reintentos agresivos
+      updateBuyerDataAfterPurchase();
+      
+      // Redirigir después de un breve delay para permitir que las actualizaciones comiencen
+      setTimeout(() => {
+        router.back();
+      }, 500);
     }
   };
 
   const handleConfirmBuyClose = () => {
     setShowConfirmBuy(false);
     setIsPurchaseInProgress(false);
-    console.log('❌ Purchase cancelled, resetting state');
   };
 
   if (!fontsLoaded) {
@@ -160,20 +154,6 @@ export default function NFTDetailsScreen() {
   const currentListing = (isPurchaseInProgress && cachedListing) ? cachedListing : listing;
 
   if (!currentListing || !currentListing.isActive) {
-    console.log("🚨 NFT DETAILS ERROR STATE:", {
-      hasListing: !!listing,
-      isActive: listing?.isActive,
-      hasCachedListing: !!cachedListing,
-      isPurchaseInProgress: isPurchaseInProgress,
-      tokenId: tokenId,
-      currentListing: currentListing ? {
-        ...currentListing,
-        tokenId: currentListing.tokenId.toString(),
-        price: currentListing.price.toString(),
-        listedAt: currentListing.listedAt.toString()
-      } : null
-    });
-    
     return (
       <ProtectedRoute>
         <ThemedView style={styles.container}>
@@ -290,12 +270,8 @@ export default function NFTDetailsScreen() {
           nftName={metadata?.name || `Tree #${tokenId}`}
           price={currentListing ? formatPrice(currentListing.price) : '0'}
           onConfirm={() => {
-            console.log('🎯 Confirm button clicked, confirmBuyFunction:', typeof confirmBuyFunction);
             if (confirmBuyFunction) {
-              console.log('✅ Executing confirmBuyFunction');
               confirmBuyFunction();
-            } else {
-              console.log('❌ confirmBuyFunction is null/undefined');
             }
             handleConfirmBuyClose();
           }}

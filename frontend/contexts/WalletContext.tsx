@@ -1,79 +1,67 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useActiveAccount } from 'thirdweb/react';
-import { readContract } from 'thirdweb';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useActiveAccount, useReadContract } from 'thirdweb/react';
+import { DeviceEventEmitter } from 'react-native';
 import { TokenContract } from '@/constants/thirdweb';
 
 interface WalletContextType {
   balance: string;
-  isLoadingBalance: boolean;
-  refreshBalance: () => Promise<void>;
-  hasClaimedReward: boolean;
-  refreshClaimStatus: () => Promise<void>;
+  isLoading: boolean;
+  refreshBalance: () => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const account = useActiveAccount();
+  const activeAccount = useActiveAccount();
   const [balance, setBalance] = useState('0');
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
-  const [hasClaimedReward, setHasClaimedReward] = useState(false);
 
-  const refreshBalance = useCallback(async () => {
-    if (!account?.address) return;
-    
-    try {
-      setIsLoadingBalance(true);
-      const data = await readContract({
-        contract: TokenContract,
-        method: "function virtualBalance(address) view returns (uint256)",
-        params: [account.address],
-      });
-      const balanceInTokens = Number(data) / 1e18;
-      setBalance(balanceInTokens.toFixed(2));
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-    } finally {
-      setIsLoadingBalance(false);
-    }
-  }, [account?.address]);
-
-  const refreshClaimStatus = useCallback(async () => {
-    if (!account?.address) return;
-    
-    try {
-      const data = await readContract({
-        contract: TokenContract,
-        method: "function hasClaimedReward(address) view returns (bool)",
-        params: [account.address],
-      });
-      setHasClaimedReward(!!data);
-    } catch (error) {
-      console.error('Error fetching claim status:', error);
-    }
-  }, [account?.address]);
+  const { 
+    data: balanceData, 
+    isPending: isLoading, 
+    refetch: refreshBalance 
+  } = useReadContract({
+    contract: TokenContract,
+    method: "function virtualBalance(address user) view returns (uint256)",
+    params: [activeAccount?.address || ""],
+    queryOptions: {
+      enabled: !!activeAccount?.address,
+    },
+  });
 
   useEffect(() => {
-    if (account?.address) {
-      refreshBalance();
-      refreshClaimStatus();
-      
-      // Actualizar balance cada 30 segundos
-      const interval = setInterval(refreshBalance, 30000);
-      return () => clearInterval(interval);
+    if (balanceData) {
+      const formattedBalance = (Number(balanceData) / 1e18).toFixed(2);
+      setBalance(formattedBalance);
     }
-  }, [account?.address, refreshBalance, refreshClaimStatus]);
+  }, [balanceData]);
 
-  const value: WalletContextType = {
-    balance,
-    isLoadingBalance,
-    refreshBalance,
-    hasClaimedReward,
-    refreshClaimStatus,
-  };
+  // Auto-refresh balance every 90 seconds
+  useEffect(() => {
+    if (!activeAccount?.address) return;
+
+    const interval = setInterval(() => {
+      refreshBalance();
+    }, 90000); // Aumentado a 90 segundos
+
+    return () => clearInterval(interval);
+  }, [activeAccount?.address, refreshBalance]);
+
+  // Listen for custom refresh events using DeviceEventEmitter for React Native
+  useEffect(() => {
+    const handleRefresh = () => {
+      refreshBalance();
+    };
+
+    const subscription = DeviceEventEmitter.addListener('refreshWalletData', handleRefresh);
+    return () => subscription.remove();
+  }, [refreshBalance]);
 
   return (
-    <WalletContext.Provider value={value}>
+    <WalletContext.Provider value={{
+      balance,
+      isLoading,
+      refreshBalance,
+    }}>
       {children}
     </WalletContext.Provider>
   );

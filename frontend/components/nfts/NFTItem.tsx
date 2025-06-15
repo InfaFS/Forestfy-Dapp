@@ -50,7 +50,6 @@ export function NFTItem({ tokenId }: NFTItemProps) {
 				const uri = uriData.toString();
 				const httpsUri = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
 				
-				console.log('Fetching metadata from:', httpsUri);
 				const response = await fetch(httpsUri);
 				
 				if (!response.ok) {
@@ -58,7 +57,6 @@ export function NFTItem({ tokenId }: NFTItemProps) {
 				}
 				
 				const data = await response.json();
-				console.log('Metadata received:', data);
 				setMetadata(data);
 
 				// Procesar la URL de la imagen

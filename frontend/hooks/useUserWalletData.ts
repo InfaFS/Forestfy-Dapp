@@ -10,6 +10,9 @@ export function useUserWalletData() {
     contract: TokenContract,
     method: "function virtualBalance(address user) view returns (uint256)",
     params: [address],
+    queryOptions: {
+      enabled: !!address,
+    },
   });
 
   // Obtener parcelas del usuario
@@ -17,6 +20,9 @@ export function useUserWalletData() {
     contract: NFTContract,
     method: "function getUserParcels(address user) view returns (uint256)",
     params: [address],
+    queryOptions: {
+      enabled: !!address,
+    },
   });
 
   // Obtener cantidad de tokens del usuario
@@ -24,6 +30,9 @@ export function useUserWalletData() {
     contract: NFTContract,
     method: "function getUserTokenCount(address user) view returns (uint256)",
     params: [address],
+    queryOptions: {
+      enabled: !!address,
+    },
   });
 
   // Función para refrescar todos los datos del usuario
@@ -34,7 +43,6 @@ export function useUserWalletData() {
         refetchParcels(),
         refetchTokenCount(),
       ]);
-      console.log("✅ Datos del usuario actualizados");
     } catch (error) {
       console.error("❌ Error actualizando datos del usuario:", error);
     }

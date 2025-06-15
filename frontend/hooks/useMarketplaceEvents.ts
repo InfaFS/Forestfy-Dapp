@@ -78,8 +78,6 @@ export function useMarketplaceEvents({
       // Marcar como procesado
       processedEvents.current.add(eventId);
 
-      console.log("🔥 Processing New Event:", event.eventName, eventId);
-
       switch (event.eventName) {
         case "NFTListed":
           {
@@ -88,12 +86,6 @@ export function useMarketplaceEvents({
               seller: string;
               price: bigint;
             };
-
-            console.log("🆕 NFT Listed:", {
-              tokenId: tokenId?.toString(),
-              seller,
-              price: price?.toString(),
-            });
 
             if (onNFTListed && tokenId && seller && price) {
               onNFTListed(
@@ -112,11 +104,6 @@ export function useMarketplaceEvents({
               seller: string;
             };
 
-            console.log("🗑️ NFT Unlisted:", {
-              tokenId: tokenId?.toString(),
-              seller,
-            });
-
             if (onNFTUnlisted && tokenId && seller) {
               onNFTUnlisted(tokenId.toString(), seller);
             }
@@ -131,13 +118,6 @@ export function useMarketplaceEvents({
               buyer: string;
               price: bigint;
             };
-
-            console.log("💰 NFT Sold:", {
-              tokenId: tokenId?.toString(),
-              seller,
-              buyer,
-              price: price?.toString(),
-            });
 
             if (onNFTSold && tokenId && seller && buyer && price) {
               onNFTSold(

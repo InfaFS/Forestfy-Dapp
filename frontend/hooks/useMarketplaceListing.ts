@@ -23,16 +23,13 @@ export function useMarketplaceListing(
     method:
       "function getListing(uint256 tokenId) view returns ((uint256 tokenId, address seller, uint256 price, bool isActive, uint256 listedAt))",
     params: [tokenId],
+    queryOptions: {
+      enabled: !!tokenId,
+    },
   });
 
   useEffect(() => {
     if (listingData) {
-      console.log(
-        "📦 Listing data received for token",
-        tokenId.toString(),
-        ":",
-        listingData
-      );
       const listing = listingData as {
         tokenId: bigint;
         seller: string;
@@ -40,40 +37,20 @@ export function useMarketplaceListing(
         isActive: boolean;
         listedAt: bigint;
       };
-      console.log("✅ Processed listing for token", tokenId.toString(), ":", {
-        ...listing,
-        tokenId: listing.tokenId.toString(),
-        price: listing.price.toString(),
-        listedAt: listing.listedAt.toString(),
-        isActive: listing.isActive,
-      });
-
-      // Log especial si el listing no está activo
-      if (!listing.isActive) {
-        console.log(
-          "❌ LISTING NOT ACTIVE for token",
-          tokenId.toString(),
-          "- this will show error page"
-        );
-      }
 
       setListing(listing);
-    } else {
-      console.log("❌ No listing data for token:", tokenId.toString());
     }
   }, [listingData, tokenId]);
 
-  // Refetch automático cada 30 segundos solo si no está deshabilitado
+  // Refetch automático cada 60 segundos solo si no está deshabilitado
   useEffect(() => {
     if (options?.disableAutoRefresh) {
-      console.log("Auto refresh disabled for token:", tokenId.toString());
       return;
     }
 
     const interval = setInterval(() => {
-      console.log("🔄 Auto-refreshing listing for token:", tokenId.toString());
       refetchListing();
-    }, 30000); // 30 segundos (reducido de 15)
+    }, 60000); // Aumentado a 60 segundos
 
     return () => clearInterval(interval);
   }, [refetchListing, options?.disableAutoRefresh, tokenId]);
@@ -95,41 +72,36 @@ export function useActiveListings() {
     contract: MarketplaceContract,
     method: "function getActiveListings() view returns (uint256[] memory)",
     params: [],
+    queryOptions: {
+      enabled: true,
+    },
   });
 
   // Escuchar eventos del marketplace para refetch automático
   useMarketplaceEvents({
     onNFTListed: (tokenId, seller, price) => {
-      console.log(
-        `🆕 New NFT Listed: #${tokenId} by ${seller} for ${price} FTK`
-      );
       // Refetch la lista después de un pequeño delay para asegurar que la transacción se haya procesado
       setTimeout(() => {
         refetchIds();
       }, 2000);
     },
     onNFTUnlisted: (tokenId, seller) => {
-      console.log(`🗑️ NFT Unlisted: #${tokenId} by ${seller}`);
       // Refetch la lista después de un pequeño delay
       setTimeout(() => {
         refetchIds();
       }, 2000);
     },
     onNFTSold: (tokenId, seller, buyer, price) => {
-      console.log(
-        `💰 NFT Sold: #${tokenId} from ${seller} to ${buyer} for ${price} FTK`
-      );
       // No hacer refetch automático inmediato para evitar interferir con la notificación de success
       // El refresh se hará cuando el usuario regrese al marketplace
     },
   });
 
-  // Refetch automático cada 45 segundos para mantener datos actualizados como backup
+  // Refetch automático cada 90 segundos para mantener datos actualizados como backup
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log("🔄 Auto-refreshing active listings");
       refetchIds();
-    }, 45000); // 45 segundos (reducido de 15)
+    }, 90000); // Aumentado a 90 segundos
 
     return () => clearInterval(interval);
   }, [refetchIds]);

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 
 interface TreesContextType {
   refreshTrigger: number;
@@ -12,8 +13,6 @@ export function TreesProvider({ children }: { children: React.ReactNode }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerRefresh = useCallback(() => {
-    console.log('🌳 TreesContext: triggerRefresh called, debouncing...');
-    
     // Clear existing timeout
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -21,14 +20,19 @@ export function TreesProvider({ children }: { children: React.ReactNode }) {
     
     // Set new timeout to debounce rapid calls
     debounceRef.current = setTimeout(() => {
-      console.log('🌳 TreesContext: executing debounced refresh');
-      setRefreshTrigger(prev => {
-        const newValue = prev + 1;
-        console.log('🌳 TreesContext: refreshTrigger updated from', prev, 'to', newValue);
-        return newValue;
-      });
+      setRefreshTrigger(prev => prev + 1);
     }, 500); // 500ms debounce
   }, []);
+
+  // Listen for refresh events from notifications
+  useEffect(() => {
+    const handleRefresh = () => {
+      triggerRefresh();
+    };
+
+    const subscription = DeviceEventEmitter.addListener('refreshTreesData', handleRefresh);
+    return () => subscription.remove();
+  }, [triggerRefresh]);
 
   return (
     <TreesContext.Provider value={{ refreshTrigger, triggerRefresh }}>
