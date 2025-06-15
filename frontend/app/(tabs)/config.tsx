@@ -11,6 +11,7 @@ import { useTrees } from "@/contexts/TreesContext";
 import { RewardAlert } from "@/components/RewardAlert";
 import { ConfirmParcelAlert } from "@/components/ConfirmParcelAlert";
 import { ConfirmDisconnectAlert } from '@/components/ConfirmDisconnectAlert';
+import { router } from 'expo-router';
 
 export default function ConfigScreen() {
 	const account = useActiveAccount();
@@ -160,6 +161,10 @@ export default function ConfigScreen() {
 		}
 	};
 
+	const handleGoToMarketplace = () => {
+		router.push('/(screens)/marketplace');
+	};
+
 	// Usar el estado local o el estado del contrato
 	const isClaimed = localHasClaimed || hasClaimed;
 
@@ -227,6 +232,23 @@ export default function ConfigScreen() {
 						<View style={styles.textContainer}>
 							<ThemedText style={styles.customButtonText}>
 								{isBuyingParcel ? "Buying..." : "Buy parcel"}
+							</ThemedText>
+						</View>
+					</TouchableOpacity>
+
+					{/* Custom Marketplace Button with OK button styling */}
+					<TouchableOpacity
+						style={styles.customButton}
+						onPress={handleGoToMarketplace}
+					>
+						<Image 
+							source={require("@/assets/images/coin.png")}
+							style={styles.buttonImage}
+							resizeMode="contain"
+						/>
+						<View style={styles.textContainer}>
+							<ThemedText style={styles.customButtonText}>
+								Marketplace
 							</ThemedText>
 						</View>
 					</TouchableOpacity>

@@ -7,7 +7,8 @@ const secretKey =
 
 const nftContractAddress = process.env.EXPO_PUBLIC_NFT_CONTRACT_ADDRESS;
 const tokenContractAddress = process.env.EXPO_PUBLIC_TOKEN_CONTRACT_ADDRESS;
-
+const marketplaceContractAddress =
+  process.env.EXPO_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS;
 if (!clientId) {
   throw new Error(
     "Missing EXPO_PUBLIC_THIRDWEB_CLIENT_ID - make sure to set it in your .env file"
@@ -29,6 +30,12 @@ if (!nftContractAddress) {
 if (!tokenContractAddress) {
   throw new Error(
     "Missing EXPO_PUBLIC_TOKEN_CONTRACT_ADDRESS - make sure to set it in your .env file"
+  );
+}
+
+if (!marketplaceContractAddress) {
+  throw new Error(
+    "Missing EXPO_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS - make sure to set it in your .env file"
   );
 }
 
@@ -66,4 +73,10 @@ export const TokenContract = getContract({
   client,
   chain: mantleSepoliaTestnet,
   address: tokenContractAddress,
+});
+
+export const MarketplaceContract = getContract({
+  client,
+  chain: mantleSepoliaTestnet,
+  address: marketplaceContractAddress,
 });
