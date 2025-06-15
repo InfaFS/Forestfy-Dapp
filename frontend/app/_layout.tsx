@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { TreesProvider } from "@/contexts/TreesContext";
+import { MarketplaceProvider } from "@/contexts/MarketplaceContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -104,7 +105,9 @@ export default function RootLayout() {
 				<WalletProvider>
 					<NotificationProvider>
 						<TreesProvider>
-							<RootLayoutNav />
+							<MarketplaceProvider>
+								<RootLayoutNav />
+							</MarketplaceProvider>
 						</TreesProvider>
 					</NotificationProvider>
 				</WalletProvider>

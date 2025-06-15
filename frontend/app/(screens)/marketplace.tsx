@@ -7,6 +7,7 @@ import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { MarketplaceContract, NFTContract } from '@/constants/thirdweb';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { router } from 'expo-router';
+import { useMarketplace } from '@/contexts/MarketplaceContext';
 
 interface Listing {
   tokenId: bigint;
@@ -29,6 +30,7 @@ interface NFTMetadata {
 export default function MarketplaceScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const account = useActiveAccount();
+  const { refreshTrigger } = useMarketplace();
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -41,6 +43,11 @@ export default function MarketplaceScreen() {
     method: "function getActiveListings() view returns (uint256[] memory)",
     params: [],
   });
+
+  // Refrescar automáticamente cuando cambie el refreshTrigger
+  useEffect(() => {
+    refetchIds();
+  }, [refreshTrigger, refetchIds]);
 
   // Los detalles se obtienen directamente en MarketplaceNFTItem usando useReadContract
 

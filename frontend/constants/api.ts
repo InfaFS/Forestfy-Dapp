@@ -7,6 +7,9 @@ export const API_ENDPOINTS = {
   claimStaking: `${API_BASE_URL}/claim-staking`,
   claimFirstParcel: `${API_BASE_URL}/claim-first-parcel`,
   buyParcel: `${API_BASE_URL}/add-parcel`,
+  buyNFT: `${API_BASE_URL}/buy-nft`,
+  listNFT: `${API_BASE_URL}/list-nft`,
+  unlistNFT: `${API_BASE_URL}/unlist-nft`,
 } as const;
 
 export const reclaimReward = async (address: string) => {
@@ -121,6 +124,98 @@ export const buyParcel = async (address: string) => {
 
     if (!response.ok) {
       throw new Error("Error al comprar la parcela");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const buyNFT = async (
+  address: string,
+  tokenId: string,
+  userBalance: number,
+  userParcels: number,
+  userTokenCount: number,
+  nftPrice: number
+) => {
+  try {
+    // Verificar si el balance del usuario es suficiente
+    if (userBalance < nftPrice) {
+      throw new Error(
+        `Insufficient balance. You need ${nftPrice} FTK but only have ${userBalance} FTK`
+      );
+    }
+
+    // Verificar si el usuario tiene espacio para más árboles (16 árboles por parcela)
+    const maxTrees = userParcels * 16;
+    if (userTokenCount >= maxTrees) {
+      throw new Error(
+        `No space for more trees. You need more parcels (max: ${maxTrees} trees)`
+      );
+    }
+
+    const response = await fetch(API_ENDPOINTS.buyNFT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ address, tokenId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error purchasing NFT");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const listNFT = async (
+  address: string,
+  tokenId: string,
+  precio: number
+) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.listNFT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ address, tokenId, precio }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error listing NFT");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const unlistNFT = async (address: string, tokenId: string) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.unlistNFT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ address, tokenId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error unlisting NFT");
     }
 
     return response.json();

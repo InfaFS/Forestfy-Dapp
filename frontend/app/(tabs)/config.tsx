@@ -165,6 +165,10 @@ export default function ConfigScreen() {
 		router.push('/(screens)/marketplace');
 	};
 
+	const handleGoToMyNFTs = () => {
+		router.push('/(screens)/my-nfts');
+	};
+
 	// Usar el estado local o el estado del contrato
 	const isClaimed = localHasClaimed || hasClaimed;
 
@@ -249,6 +253,23 @@ export default function ConfigScreen() {
 						<View style={styles.textContainer}>
 							<ThemedText style={styles.customButtonText}>
 								Marketplace
+							</ThemedText>
+						</View>
+					</TouchableOpacity>
+
+					{/* Custom My NFTs Button with OK button styling */}
+					<TouchableOpacity
+						style={styles.customButton}
+						onPress={handleGoToMyNFTs}
+					>
+						<Image 
+							source={require("@/assets/images/logo.png")}
+							style={styles.buttonImage}
+							resizeMode="contain"
+						/>
+						<View style={styles.textContainer}>
+							<ThemedText style={styles.customButtonText}>
+								My NFTs
 							</ThemedText>
 						</View>
 					</TouchableOpacity>

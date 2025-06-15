@@ -3,10 +3,15 @@ import { View, StyleSheet, StatusBar, ScrollView, Image, TouchableOpacity } from
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { useReadContract } from 'thirdweb/react';
-import { MarketplaceContract, NFTContract } from '@/constants/thirdweb';
+import { useReadContract, useActiveAccount } from 'thirdweb/react';
+import { MarketplaceContract, NFTContract, TokenContract } from '@/constants/thirdweb';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { router, useLocalSearchParams } from 'expo-router';
+import { buyNFT } from '@/constants/api';
+import { NFTBuyAlert } from '@/components/NFTBuyAlert';
+import { ConfirmNFTBuyAlert } from '@/components/ConfirmNFTBuyAlert';
+import { useTrees } from '@/contexts/TreesContext';
+import { useMarketplace } from '@/contexts/MarketplaceContext';
 
 interface Listing {
   tokenId: bigint;
@@ -32,6 +37,19 @@ export default function NFTDetailsScreen() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuying, setIsBuying] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showConfirmBuy, setShowConfirmBuy] = useState(false);
+
+  // Obtener cuenta activa
+  const activeAccount = useActiveAccount();
+  const address = activeAccount?.address || '';
+
+  // Contextos para refrescar datos
+  const { triggerRefresh: triggerTreesRefresh } = useTrees();
+  const { triggerRefresh: triggerMarketplaceRefresh } = useMarketplace();
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -53,6 +71,27 @@ export default function NFTDetailsScreen() {
     contract: MarketplaceContract,
     method: "function getListing(uint256 tokenId) view returns ((uint256 tokenId, address seller, uint256 price, bool isActive, uint256 listedAt))",
     params: [tokenIdBigInt],
+  });
+
+  // Obtener balance del usuario
+  const { data: balanceData } = useReadContract({
+    contract: TokenContract,
+    method: "function virtualBalance(address user) view returns (uint256)",
+    params: [address],
+  });
+
+  // Obtener parcelas del usuario
+  const { data: parcelData } = useReadContract({
+    contract: NFTContract,
+    method: "function getUserParcels(address user) view returns (uint256)",
+    params: [address],
+  });
+
+  // Obtener cantidad de tokens del usuario
+  const { data: tokenCountData } = useReadContract({
+    contract: NFTContract,
+    method: "function getUserTokenCount(address user) view returns (uint256)",
+    params: [address],
   });
 
   // Cargar metadata del NFT
@@ -116,8 +155,65 @@ export default function NFTDetailsScreen() {
   };
 
   const handleBuy = () => {
-    // Por ahora no hace nada, como solicitado
-    console.log('Buy button pressed for NFT:', tokenId);
+    if (!listing || !address || !tokenId) {
+      setAlertType('error');
+      setAlertMessage('Insufficient information to proceed with purchase');
+      setShowAlert(true);
+      return;
+    }
+
+    if (listing.seller.toLowerCase() === address.toLowerCase()) {
+      setAlertType('error');
+      setAlertMessage('You cannot buy your own NFT');
+      setShowAlert(true);
+      return;
+    }
+
+    // Mostrar confirmación antes de comprar
+    setShowConfirmBuy(true);
+  };
+
+  const handleConfirmBuy = async () => {
+    if (!listing || !address || !tokenId) return;
+    
+    setIsBuying(true);
+
+    try {
+      const userBalance = balanceData ? Number(balanceData) / 1e18 : 0;
+      const userParcels = parcelData ? Number(parcelData) : 0;
+      const userTokenCount = tokenCountData ? Number(tokenCountData) : 0;
+      const nftPrice = Number(listing.price) / 1e18;
+
+      console.log('Purchase Debug Info:');
+      console.log('- User Balance:', userBalance, 'FTK');
+      console.log('- User Parcels:', userParcels);
+      console.log('- User Token Count:', userTokenCount);
+      console.log('- NFT Price:', nftPrice, 'FTK');
+      console.log('- Balance Data Raw:', balanceData?.toString());
+
+      await buyNFT(address, tokenId, userBalance, userParcels, userTokenCount, nftPrice);
+
+      // Refrescar datos de parcelas y marketplace después de la compra exitosa
+      triggerTreesRefresh();
+      triggerMarketplaceRefresh();
+
+      setAlertType('success');
+      setAlertMessage('You have successfully purchased the NFT!');
+      setShowAlert(true);
+    } catch (error: any) {
+      setAlertType('error');
+      setAlertMessage(error.message || 'Error purchasing NFT');
+      setShowAlert(true);
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
+  const handleAlertClose = () => {
+    setShowAlert(false);
+    if (alertType === 'success') {
+      router.back();
+    }
   };
 
   const getRarityColor = (rarity: string) => {
@@ -188,30 +284,34 @@ export default function NFTDetailsScreen() {
                   return null;
                 })}
                 
-                                 {/* Información del listing */}
-                 <View style={styles.priceContainer}>
-                   <Image 
-                     source={require("@/assets/images/coin.png")}
-                     style={styles.coinIcon}
-                     resizeMode="contain"
-                   />
-                   <ThemedText style={styles.priceText}>
-                     {listing ? `${formatPrice(listing.price)} FTK` : 'Loading price...'}
-                   </ThemedText>
-                 </View>
-                 
-                 <ThemedText style={styles.ownerText}>
-                   Owner: {listing ? formatAddress(listing.seller) : 'Loading owner...'}
-                 </ThemedText>
-                 
-                 {listing && (
-                   <ThemedText style={styles.dateText}>
-                     Listed: {new Date(Number(listing.listedAt) * 1000).toLocaleDateString()}
-                   </ThemedText>
-                 )}
+                {/* Información del listing */}
+                <View style={styles.priceContainer}>
+                  <Image 
+                    source={require("@/assets/images/coin.png")}
+                    style={styles.coinIcon}
+                    resizeMode="contain"
+                  />
+                  <ThemedText style={styles.priceText}>
+                    {listing ? `${formatPrice(listing.price)} FTK` : 'Loading price...'}
+                  </ThemedText>
+                </View>
+                
+                <ThemedText style={styles.ownerText}>
+                  Owner: {listing ? formatAddress(listing.seller) : 'Loading owner...'}
+                </ThemedText>
+                
+                {listing && (
+                  <ThemedText style={styles.dateText}>
+                    Listed: {new Date(Number(listing.listedAt) * 1000).toLocaleDateString()}
+                  </ThemedText>
+                )}
                 
                 {/* Botón Comprar */}
-                <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
+                <TouchableOpacity 
+                  style={[styles.buyButton, isBuying && styles.buyButtonDisabled]} 
+                  onPress={handleBuy}
+                  disabled={isBuying}
+                >
                   <Image 
                     source={require("@/assets/images/coin.png")}
                     style={styles.buyButtonIcon}
@@ -219,7 +319,7 @@ export default function NFTDetailsScreen() {
                   />
                   <View style={styles.buyButtonTextContainer}>
                     <ThemedText style={styles.buyButtonText}>
-                      Buy Now
+                      {isBuying ? 'Buying...' : 'Buy Now'}
                     </ThemedText>
                   </View>
                 </TouchableOpacity>
@@ -227,6 +327,21 @@ export default function NFTDetailsScreen() {
             )}
           </View>
         </ScrollView>
+        
+        <NFTBuyAlert
+          show={showAlert}
+          onClose={handleAlertClose}
+          type={alertType}
+          message={alertMessage}
+        />
+        
+        <ConfirmNFTBuyAlert
+          show={showConfirmBuy}
+          onClose={() => setShowConfirmBuy(false)}
+          onConfirm={handleConfirmBuy}
+          nftName={metadata?.name || `NFT #${tokenId}`}
+          price={listing ? formatPrice(listing.price) : '0'}
+        />
       </ThemedView>
     </ProtectedRoute>
   );
@@ -265,11 +380,11 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   imageContainer: {
-    height: 300,
+    height: 250,
     backgroundColor: 'rgba(74, 124, 89, 0.1)',
     borderWidth: 3,
     borderColor: '#2d5016',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   nftImage: {
     width: '100%',
@@ -279,8 +394,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef5eb',
     borderWidth: 3,
     borderColor: '#2d5016',
-    padding: 20,
-    gap: 15,
+    padding: 15,
+    gap: 8,
   },
   loadingText: {
     fontFamily: 'PressStart2P_400Regular',
@@ -301,6 +416,7 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 14,
     textAlign: 'center',
+    marginBottom: 5,
   },
   nftDescription: {
     fontFamily: 'PressStart2P_400Regular',
@@ -308,13 +424,13 @@ const styles = StyleSheet.create({
     color: '#4a7c59',
     lineHeight: 12,
     textAlign: 'center',
-    marginVertical: 10,
+    marginBottom: 8,
   },
   rarityContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 5,
+    marginBottom: 8,
   },
   rarityLabel: {
     fontFamily: 'PressStart2P_400Regular',
@@ -330,8 +446,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 15,
-    padding: 15,
+    marginVertical: 12,
+    padding: 12,
     backgroundColor: 'rgba(255, 215, 0, 0.2)',
     borderWidth: 2,
     borderColor: '#FFD700',
@@ -352,21 +468,23 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 4,
   },
   dateText: {
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 8,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 12,
   },
   buyButton: {
     backgroundColor: '#4a7c59',
     borderRadius: 10,
-    paddingVertical: 20,
+    paddingVertical: 18,
     paddingHorizontal: 30,
     borderWidth: 3,
     borderColor: '#2d5016',
-    marginTop: 20,
+    marginTop: 10,
     alignItems: 'center',
     flexDirection: 'row',
     position: 'relative',
@@ -375,6 +493,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 0,
     elevation: 3,
+  },
+  buyButtonDisabled: {
+    backgroundColor: '#999999',
+    borderColor: '#666666',
   },
   buyButtonIcon: {
     width: 30,
