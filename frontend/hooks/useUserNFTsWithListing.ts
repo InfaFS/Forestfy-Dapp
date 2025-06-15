@@ -56,13 +56,14 @@ export function useUserNFTsWithListing() {
     },
   });
 
-  // Refetch automático cada 10 segundos para mantener datos actualizados como backup
+  // Refetch automático cada 60 segundos para mantener datos actualizados como backup
   useEffect(() => {
     if (!address) return;
 
     const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing user NFTs");
       refetchUserNFTs();
-    }, 10000); // 10 segundos
+    }, 60000); // 60 segundos (reducido de 10)
 
     return () => clearInterval(interval);
   }, [address, refetchUserNFTs]);

@@ -6,6 +6,7 @@ interface Notification {
   title: string;
   message?: string;
   duration?: number;
+  onDismiss?: () => void;
 }
 
 interface NotificationContextType {
@@ -36,6 +37,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   };
 
   const hideNotification = (id: string) => {
+    // Encontrar la notificación antes de eliminarla para ejecutar onDismiss
+    const notification = notifications.find(n => n.id === id);
+    if (notification?.onDismiss) {
+      console.log('🔔 Executing onDismiss callback for notification:', id);
+      notification.onDismiss();
+    }
+    
     setNotifications(prev => prev.filter(notification => notification.id !== id));
   };
 

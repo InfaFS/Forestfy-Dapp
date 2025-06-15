@@ -40,17 +40,26 @@ export function useGlobalSaleNotifications() {
           title: NOTIFICATION_MESSAGES.nftSold.title,
           message: NOTIFICATION_MESSAGES.nftSold.getMessage(tokenId, price),
           duration: 0, // No auto-hide, requiere dismiss manual
+          onDismiss: async () => {
+            console.log(
+              "💰 User dismissed sale notification, refreshing balance and data..."
+            );
+            // Pequeño delay para asegurar que la transacción se haya confirmado
+            setTimeout(async () => {
+              try {
+                await refreshBalance();
+                triggerTreesRefresh();
+                triggerMarketplaceRefresh();
+                console.log("✅ Data refreshed after user confirmed NFT sale");
+              } catch (error) {
+                console.error(
+                  "Error refreshing data after NFT sale confirmation:",
+                  error
+                );
+              }
+            }, 1000); // 1 segundo de delay
+          },
         });
-
-        // Refrescar todos los datos cuando vendas un NFT
-        try {
-          await refreshBalance();
-          triggerTreesRefresh();
-          triggerMarketplaceRefresh();
-          console.log("✅ Data refreshed after NFT sale");
-        } catch (error) {
-          console.error("Error refreshing data after NFT sale:", error);
-        }
       }
 
       // No refrescar datos automáticamente cuando compres un NFT

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 interface TreesContextType {
   refreshTrigger: number;
@@ -9,14 +9,25 @@ const TreesContext = createContext<TreesContextType | undefined>(undefined);
 
 export function TreesProvider({ children }: { children: React.ReactNode }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerRefresh = useCallback(() => {
-    console.log('🌳 TreesContext: triggerRefresh called, incrementing trigger');
-    setRefreshTrigger(prev => {
-      const newValue = prev + 1;
-      console.log('🌳 TreesContext: refreshTrigger updated from', prev, 'to', newValue);
-      return newValue;
-    });
+    console.log('🌳 TreesContext: triggerRefresh called, debouncing...');
+    
+    // Clear existing timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    // Set new timeout to debounce rapid calls
+    debounceRef.current = setTimeout(() => {
+      console.log('🌳 TreesContext: executing debounced refresh');
+      setRefreshTrigger(prev => {
+        const newValue = prev + 1;
+        console.log('🌳 TreesContext: refreshTrigger updated from', prev, 'to', newValue);
+        return newValue;
+      });
+    }, 500); // 500ms debounce
   }, []);
 
   return (

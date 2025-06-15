@@ -94,13 +94,21 @@ export default function TreesScreen() {
 		refetchParcels();
 	}, [refreshTrigger, refetchNFTs, refetchParcels]);
 
-	// Add focus effect to refetch when tab becomes active
+	// Add focus effect to refetch when tab becomes active (only if no recent refresh)
 	useFocusEffect(
 		useCallback(() => {
-			console.log('👁️ Trees tab gained focus, refreshing data...');
-			refetchNFTs();
-			refetchParcels();
-		}, [refetchNFTs, refetchParcels])
+			console.log('👁️ Trees tab gained focus');
+			// Only refresh if it's been more than 2 seconds since last refresh trigger
+			const now = Date.now();
+			const lastRefreshTime = refreshTrigger * 1000; // Approximate time
+			if (now - lastRefreshTime > 2000) {
+				console.log('👁️ Refreshing data on focus (no recent refresh)');
+				refetchNFTs();
+				refetchParcels();
+			} else {
+				console.log('👁️ Skipping refresh on focus (recent refresh detected)');
+			}
+		}, [refreshTrigger, refetchNFTs, refetchParcels])
 	);
 
 	useEffect(() => {

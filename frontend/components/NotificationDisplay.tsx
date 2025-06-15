@@ -57,7 +57,9 @@ export function NotificationDisplay() {
               style={styles.dismissButton} 
               onPress={() => handleDismiss(notification.id)}
             >
-              <Text style={styles.dismissText}>Dismiss</Text>
+              <Text style={styles.dismissText}>
+                {isNFTSale ? "Aceptar" : "Dismiss"}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         );

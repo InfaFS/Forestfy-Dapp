@@ -63,7 +63,7 @@ export function useMarketplaceListing(
     }
   }, [listingData, tokenId]);
 
-  // Refetch automático cada 15 segundos solo si no está deshabilitado
+  // Refetch automático cada 30 segundos solo si no está deshabilitado
   useEffect(() => {
     if (options?.disableAutoRefresh) {
       console.log("Auto refresh disabled for token:", tokenId.toString());
@@ -71,8 +71,9 @@ export function useMarketplaceListing(
     }
 
     const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing listing for token:", tokenId.toString());
       refetchListing();
-    }, 15000); // 15 segundos
+    }, 30000); // 30 segundos (reducido de 15)
 
     return () => clearInterval(interval);
   }, [refetchListing, options?.disableAutoRefresh, tokenId]);
@@ -123,11 +124,12 @@ export function useActiveListings() {
     },
   });
 
-  // Refetch automático cada 15 segundos para mantener datos actualizados como backup
+  // Refetch automático cada 45 segundos para mantener datos actualizados como backup
   useEffect(() => {
     const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing active listings");
       refetchIds();
-    }, 15000); // 15 segundos
+    }, 45000); // 45 segundos (reducido de 15)
 
     return () => clearInterval(interval);
   }, [refetchIds]);
