@@ -10,6 +10,9 @@ contract ForestNFT is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
+    // Authorized contracts that can perform operations
+    mapping(address => bool) public authorizedContracts;
+
     enum Rarity {
         NORMAL,
         RARE,
@@ -20,8 +23,11 @@ contract ForestNFT is ERC721URIStorage, Ownable {
     mapping(address => mapping(Rarity => uint256)) public userNFTsByRarity;
     mapping(address => uint256) public userParcels; // Cantidad de parcelas por usuario
 
-    mapping(address => uint256[]) private _ownedTokens;
-    mapping(uint256 => uint256) private _ownedTokensIndex;
+    // Nuevos mappings para manejar la propiedad interna
+    mapping(address => uint256[]) private _userOwnedTokens; // Tokens que "posee" cada usuario
+    mapping(uint256 => address) private _tokenToOwner; // Mapeo de token a su "propietario"
+    mapping(address => uint256) private _userTokenCount; // Contador de tokens por usuario
+    mapping(uint256 => uint256) private _userOwnedTokensIndex; // Índice del token en el array del usuario
 
     uint256 public constant TREES_PER_PARCEL = 16; // Máximo de árboles por parcela
 
@@ -35,7 +41,7 @@ contract ForestNFT is ERC721URIStorage, Ownable {
         );
 
         // Verificar que el usuario tenga suficientes parcelas
-        uint256 currentTrees = balanceOf(to);
+        uint256 currentTrees = getUserTokenCount(to);
         uint256 maxTreesAllowed = userParcels[to] * TREES_PER_PARCEL;
         require(
             currentTrees < maxTreesAllowed,
@@ -49,8 +55,93 @@ contract ForestNFT is ERC721URIStorage, Ownable {
         tokenRarity[newTokenId] = rarity;
 
         string memory uri = createTokenURI(rarity);
-        _safeMint(to, newTokenId);
+
+        // Mintear al contrato mismo
+        _mint(address(this), newTokenId);
         _setTokenURI(newTokenId, uri);
+
+        // Asignar la propiedad interna al usuario
+        _assignTokenToUser(to, newTokenId);
+
+        // Actualizar contadores de rareza
+        userNFTsByRarity[to][rarity]++;
+    }
+
+    // Función interna para asignar un token a un usuario
+    function _assignTokenToUser(address user, uint256 tokenId) internal {
+        _tokenToOwner[tokenId] = user;
+        _userOwnedTokensIndex[tokenId] = _userOwnedTokens[user].length;
+        _userOwnedTokens[user].push(tokenId);
+        _userTokenCount[user]++;
+    }
+
+    // Modifier for authorized contracts
+    modifier onlyOwnerOrAuthorized() {
+        require(
+            msg.sender == owner() || authorizedContracts[msg.sender],
+            "Not authorized"
+        );
+        _;
+    }
+
+    // Add authorized contract
+    function addAuthorizedContract(address contractAddress) public onlyOwner {
+        authorizedContracts[contractAddress] = true;
+    }
+
+    // Remove authorized contract
+    function removeAuthorizedContract(
+        address contractAddress
+    ) public onlyOwner {
+        authorizedContracts[contractAddress] = false;
+    }
+
+    // Función para transferir tokens entre usuarios (dentro del contrato)
+    function transferTokenBetweenUsers(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public onlyOwnerOrAuthorized {
+        require(
+            _tokenToOwner[tokenId] == from,
+            "Token does not belong to from address"
+        );
+        require(to != address(0), "Cannot transfer to zero address");
+
+        // Verificar que el usuario destino tenga suficientes parcelas
+        uint256 currentTrees = getUserTokenCount(to);
+        uint256 maxTreesAllowed = userParcels[to] * TREES_PER_PARCEL;
+        require(
+            currentTrees < maxTreesAllowed,
+            "Destination user does not have enough parcels"
+        );
+
+        Rarity rarity = tokenRarity[tokenId];
+
+        // Remover del usuario anterior
+        _removeTokenFromUser(from, tokenId);
+        userNFTsByRarity[from][rarity]--;
+
+        // Asignar al nuevo usuario
+        _assignTokenToUser(to, tokenId);
+        userNFTsByRarity[to][rarity]++;
+    }
+
+    // Función interna para remover un token de un usuario
+    function _removeTokenFromUser(address user, uint256 tokenId) internal {
+        uint256 lastIndex = _userOwnedTokens[user].length - 1;
+        uint256 tokenIndex = _userOwnedTokensIndex[tokenId];
+
+        if (tokenIndex != lastIndex) {
+            uint256 lastTokenId = _userOwnedTokens[user][lastIndex];
+            _userOwnedTokens[user][tokenIndex] = lastTokenId;
+            _userOwnedTokensIndex[lastTokenId] = tokenIndex;
+        }
+
+        _userOwnedTokens[user].pop();
+        delete _userOwnedTokensIndex[tokenId];
+        _userTokenCount[user]--;
+        delete _tokenToOwner[tokenId];
     }
 
     // Probabilidad dinámica según la cantidad stakeada
@@ -124,10 +215,21 @@ contract ForestNFT is ERC721URIStorage, Ownable {
         return userNFTsByRarity[user][rarity];
     }
 
+    // Función actualizada para obtener tokens de un usuario (propiedad interna)
     function tokensOfOwner(
         address owner
     ) public view returns (uint256[] memory) {
-        return _ownedTokens[owner];
+        return _userOwnedTokens[owner];
+    }
+
+    // Nueva función para obtener el propietario interno de un token
+    function getTokenOwner(uint256 tokenId) public view returns (address) {
+        return _tokenToOwner[tokenId];
+    }
+
+    // Nueva función para obtener el balance interno de un usuario
+    function getUserTokenCount(address user) public view returns (uint256) {
+        return _userTokenCount[user];
     }
 
     // Función para asignar parcelas a un usuario
@@ -155,7 +257,7 @@ contract ForestNFT is ERC721URIStorage, Ownable {
 
     // Función para consultar cuántos árboles más puede plantar un usuario
     function getAvailableTreeSlots(address user) public view returns (uint256) {
-        uint256 currentTrees = balanceOf(user);
+        uint256 currentTrees = getUserTokenCount(user);
         uint256 maxTreesAllowed = userParcels[user] * TREES_PER_PARCEL;
 
         if (currentTrees >= maxTreesAllowed) {
@@ -167,37 +269,89 @@ contract ForestNFT is ERC721URIStorage, Ownable {
 
     // Función para verificar si un usuario puede plantar más árboles
     function canPlantMoreTrees(address user) public view returns (bool) {
-        uint256 currentTrees = balanceOf(user);
+        uint256 currentTrees = getUserTokenCount(user);
         uint256 maxTreesAllowed = userParcels[user] * TREES_PER_PARCEL;
         return currentTrees < maxTreesAllowed;
     }
 
+    // Función para retirar un NFT del contrato hacia la wallet del usuario
+    function withdraw(address to, uint256 tokenId) public onlyOwner {
+        require(_tokenToOwner[tokenId] != address(0), "Token does not exist");
+        require(to != address(0), "Cannot withdraw to zero address");
+
+        address currentOwner = _tokenToOwner[tokenId];
+        Rarity rarity = tokenRarity[tokenId];
+
+        // Remover del sistema interno
+        _removeTokenFromUser(currentOwner, tokenId);
+        userNFTsByRarity[currentOwner][rarity]--;
+
+        // Transferir el NFT del contrato a la wallet especificada
+        _transfer(address(this), to, tokenId);
+    }
+
+    // Función para retirar múltiples NFTs de un usuario hacia su wallet
+    function withdrawMultiple(
+        address user,
+        address to,
+        uint256[] calldata tokenIds
+    ) public onlyOwner {
+        require(to != address(0), "Cannot withdraw to zero address");
+        require(tokenIds.length > 0, "No tokens specified");
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            require(
+                _tokenToOwner[tokenId] == user,
+                "Token does not belong to user"
+            );
+
+            Rarity rarity = tokenRarity[tokenId];
+
+            // Remover del sistema interno
+            _removeTokenFromUser(user, tokenId);
+            userNFTsByRarity[user][rarity]--;
+
+            // Transferir el NFT del contrato a la wallet especificada
+            _transfer(address(this), to, tokenId);
+        }
+    }
+
+    // Función para retirar todos los NFTs de un usuario hacia su wallet
+    function withdrawAll(address user, address to) public onlyOwner {
+        require(to != address(0), "Cannot withdraw to zero address");
+
+        uint256[] memory userTokens = _userOwnedTokens[user];
+        require(userTokens.length > 0, "User has no tokens");
+
+        // Crear una copia del array porque se modificará durante el proceso
+        uint256[] memory tokensToWithdraw = new uint256[](userTokens.length);
+        for (uint256 i = 0; i < userTokens.length; i++) {
+            tokensToWithdraw[i] = userTokens[i];
+        }
+
+        // Retirar todos los tokens
+        for (uint256 i = 0; i < tokensToWithdraw.length; i++) {
+            uint256 tokenId = tokensToWithdraw[i];
+            Rarity rarity = tokenRarity[tokenId];
+
+            // Remover del sistema interno
+            _removeTokenFromUser(user, tokenId);
+            userNFTsByRarity[user][rarity]--;
+
+            // Transferir el NFT del contrato a la wallet especificada
+            _transfer(address(this), to, tokenId);
+        }
+    }
+
+    // Override para mantener compatibilidad pero ahora no se usa para transferencias de usuarios
     function _beforeTokenTransfer(
         address from,
         address to,
         uint256 tokenId,
         uint256 /* batchSize */
     ) internal virtual override {
-        if (from != address(0)) {
-            userNFTsByRarity[from][tokenRarity[tokenId]]--;
-
-            uint256 lastIndex = _ownedTokens[from].length - 1;
-            uint256 tokenIndex = _ownedTokensIndex[tokenId];
-
-            if (tokenIndex != lastIndex) {
-                uint256 lastTokenId = _ownedTokens[from][lastIndex];
-                _ownedTokens[from][tokenIndex] = lastTokenId;
-                _ownedTokensIndex[lastTokenId] = tokenIndex;
-            }
-
-            _ownedTokens[from].pop();
-            delete _ownedTokensIndex[tokenId];
-        }
-
-        if (to != address(0)) {
-            userNFTsByRarity[to][tokenRarity[tokenId]]++;
-            _ownedTokensIndex[tokenId] = _ownedTokens[to].length;
-            _ownedTokens[to].push(tokenId);
-        }
+        // Esta función ahora solo se ejecuta para mint y burn del contrato
+        // Las transferencias entre usuarios se manejan internamente
     }
 }

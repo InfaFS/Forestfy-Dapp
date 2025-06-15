@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract ForestToken is ERC20, Ownable {
     mapping(address => bool) public hasClaimedReward;
     mapping(address => uint256) public virtualBalance;
+
+    // Authorized contracts that can perform operations
+    mapping(address => bool) public authorizedContracts;
     uint256 public constant INITIAL_REWARD = 20 * 10 ** 18; // 20 tokens
     uint256 public constant FEE_PERCENTAGE = 5; // 5% fee
 
@@ -53,11 +56,32 @@ contract ForestToken is ERC20, Ownable {
         virtualBalance[to] += INITIAL_REWARD;
     }
 
+    // Modifier for authorized contracts
+    modifier onlyOwnerOrAuthorized() {
+        require(
+            msg.sender == owner() || authorizedContracts[msg.sender],
+            "Not authorized"
+        );
+        _;
+    }
+
+    // Add authorized contract
+    function addAuthorizedContract(address contractAddress) public onlyOwner {
+        authorizedContracts[contractAddress] = true;
+    }
+
+    // Remove authorized contract
+    function removeAuthorizedContract(
+        address contractAddress
+    ) public onlyOwner {
+        authorizedContracts[contractAddress] = false;
+    }
+
     function virtualTransfer(
         address from,
         address to,
         uint256 amount
-    ) public onlyOwner {
+    ) public onlyOwnerOrAuthorized {
         require(virtualBalance[from] >= amount, "Saldo virtual insuficiente");
         virtualBalance[from] -= amount;
         virtualBalance[to] += amount;
