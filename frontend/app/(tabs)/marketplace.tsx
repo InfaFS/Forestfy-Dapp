@@ -1,16 +1,26 @@
 import React from 'react';
-import { StyleSheet, StatusBar, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, StatusBar, ScrollView, TouchableOpacity, Image, View } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { router } from 'expo-router';
-import { ThemedButton } from '@/components/ThemedButton';
+import { useActiveAccount, useReadContract } from 'thirdweb/react';
+import { UserRegistryContract } from '@/constants/thirdweb';
 
 export default function MarketplaceScreen() {
+  const account = useActiveAccount();
+  
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
     PressStart2P_400Regular,
+  });
+
+  // Verificar si el usuario está registrado
+  const { data: isUserRegistered } = useReadContract({
+    contract: UserRegistryContract,
+    method: "function isUserRegistered(address) view returns (bool)",
+    params: [account?.address || ""],
   });
 
   if (!fontsLoaded) {
@@ -47,23 +57,45 @@ export default function MarketplaceScreen() {
               Buy and sell NFTs in the Forestfy marketplace
             </ThemedText>
             
-            <ThemedView style={styles.buttonsContainer}>
-              <ThemedButton
-                title="Browse Marketplace"
-                onPress={handleGoToMarketplace}
-                variant="primary"
-                pixelFont={true}
-                style={styles.button}
-              />
-              
-              <ThemedButton
-                title="My NFTs"
-                onPress={handleGoToMyNFTs}
-                variant="secondary"
-                pixelFont={true}
-                style={styles.button}
-              />
-            </ThemedView>
+            {account ? (
+              isUserRegistered ? (
+                <ThemedView style={styles.buttonsContainer}>
+                  <TouchableOpacity
+                    style={styles.customButton}
+                    onPress={handleGoToMarketplace}
+                  >
+                    <View style={styles.textContainer}>
+                      <ThemedText style={styles.customButtonText}>
+                        Browse Marketplace
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.customButton}
+                    onPress={handleGoToMyNFTs}
+                  >
+                    <View style={styles.textContainer}>
+                      <ThemedText style={styles.customButtonText}>
+                        List NFTs
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                </ThemedView>
+              ) : (
+                <ThemedView style={styles.notRegisteredContainer}>
+                  <ThemedText style={styles.notRegisteredText}>
+                    Please register in Config to access marketplace features
+                  </ThemedText>
+                </ThemedView>
+              )
+            ) : (
+              <ThemedView style={styles.notRegisteredContainer}>
+                <ThemedText style={styles.notRegisteredText}>
+                  Please connect your wallet first
+                </ThemedText>
+              </ThemedView>
+            )}
           </ThemedView>
         </ScrollView>
       </ThemedView>
@@ -129,5 +161,54 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
+  },
+  // Custom button styles matching the consistent project style
+  customButton: {
+    backgroundColor: '#4a7c59',
+    borderRadius: 10,
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    minWidth: 280,
+    alignItems: 'center',
+    flexDirection: 'row',
+    position: 'relative',
+    marginBottom: 15,
+  },
+  textContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 12,
+    color: 'white',
+    textAlign: 'center',
+  },
+  buttonImage: {
+    width: 50,
+    height: 50,
+    position: 'absolute',
+    left: 30,
+  },
+  notRegisteredContainer: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderWidth: 2,
+    borderColor: '#ff6b35',
+    borderRadius: 0,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  notRegisteredText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#d4572a',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 }); 

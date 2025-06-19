@@ -198,6 +198,8 @@ export default function FocusScreen() {
 		},
 	});
 
+
+
 	useEffect(() => {
 		if (parcelData !== undefined) {
 			setHasParcel(Number(parcelData) > 0);
@@ -515,8 +517,8 @@ export default function FocusScreen() {
 					((isProcessingTokens && !timerCompleted) || timerActive) && styles.scrollContainerCentered
 				]} showsVerticalScrollIndicator={false}>
 
-					{/* Sección de procesamiento centralizada - SOLO cuando está procesando staking inicial */}
-					{(isProcessingTokens && !timerCompleted) ? (
+							{/* Sección de procesamiento centralizada - SOLO cuando está procesando staking inicial */}
+							{(isProcessingTokens && !timerCompleted) ? (
 						<ThemedView style={styles.processingSection}>
 							<ThemedText style={styles.processingSectionTitle}>
 								Withdrawing coins
@@ -686,16 +688,16 @@ export default function FocusScreen() {
 						</>
 					)}
 
-					{/* Success Alert */}
-					{showSuccessAlert && success && (
-						<SuccessAlert
-							show={showSuccessAlert}
-							onClose={() => {
-								setShowSuccessAlert(false);
-								setSuccess(null);
-							}}
-						/>
-					)}
+							{/* Success Alert */}
+							{showSuccessAlert && success && (
+								<SuccessAlert
+									show={showSuccessAlert}
+									onClose={() => {
+										setShowSuccessAlert(false);
+										setSuccess(null);
+									}}
+								/>
+							)}
 				</ScrollView>
 
 				{/* Modal para Amount to Stake */}

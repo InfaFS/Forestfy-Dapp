@@ -250,12 +250,20 @@ export default function TreesScreen() {
 							<ThemedText style={[styles.noParcelsText, { fontFamily: 'PressStart2P_400Regular' }]}>
 								You don't have parcels :(
 							</ThemedText>
-							<ThemedButton
-								title={isClaimingParcel ? "Getting..." : "Claim a parcel for free!"}
+							<TouchableOpacity
+								style={[
+									styles.customButton,
+									{ opacity: isClaimingParcel ? 0.5 : 1 }
+								]}
 								onPress={handleClaimFirstParcel}
 								disabled={isClaimingParcel}
-								style={styles.claimButton}
-							/>
+							>
+								<View style={styles.textContainer}>
+									<ThemedText style={styles.customButtonText}>
+										{isClaimingParcel ? "Getting..." : "Claim a parcel for free!"}
+									</ThemedText>
+								</View>
+							</TouchableOpacity>
 						</View>
 					) : (
 						<>
@@ -466,6 +474,39 @@ const styles = StyleSheet.create({
 		color: '#2E7D32',
 		fontWeight: 'bold',
 		fontFamily: 'PressStart2P_400Regular',
+	},
+	// Custom button styles matching the consistent project style
+	customButton: {
+		backgroundColor: '#4a7c59',
+		borderRadius: 10,
+		paddingVertical: 20,
+		paddingHorizontal: 30,
+		borderWidth: 2,
+		borderColor: '#2d5016',
+		minWidth: 280,
+		alignItems: 'center',
+		flexDirection: 'row',
+		position: 'relative',
+		marginTop: 20,
+	},
+	textContainer: {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	customButtonText: {
+		fontFamily: 'PressStart2P_400Regular',
+		fontSize: 12,
+		color: 'white',
+		textAlign: 'center',
+	},
+	buttonImage: {
+		width: 50,
+		height: 50,
+		position: 'absolute',
+		left: 30,
 	},
 
 }); 

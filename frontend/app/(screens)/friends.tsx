@@ -21,6 +21,7 @@ export default function FriendsScreen() {
   const [showAddFriendAlert, setShowAddFriendAlert] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Array<{address: string, name: string}>>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   // Confirmation alerts
   const [showAcceptConfirm, setShowAcceptConfirm] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -144,11 +145,14 @@ export default function FriendsScreen() {
   useEffect(() => {
     const loadFriendRequests = async () => {
       if (account?.address && allUsers) {
+        setIsLoadingRequests(true);
         try {
           const requests = await getFriendRequests();
           setFriendRequests(requests);
         } catch (error) {
           console.error("Error loading friend requests:", error);
+        } finally {
+          setIsLoadingRequests(false);
         }
       }
     };
@@ -162,8 +166,15 @@ export default function FriendsScreen() {
       refetchFriends();
       // Also refresh friend requests
       if (account?.address && allUsers) {
-        const updatedRequests = await getFriendRequests();
-        setFriendRequests(updatedRequests);
+        setIsLoadingRequests(true);
+        try {
+          const updatedRequests = await getFriendRequests();
+          setFriendRequests(updatedRequests);
+        } catch (error) {
+          console.error("Error refreshing friend requests:", error);
+        } finally {
+          setIsLoadingRequests(false);
+        }
       }
     };
 
@@ -176,16 +187,26 @@ export default function FriendsScreen() {
     onFriendRequestSent: async () => {
       // Refresh friend requests when a new request is sent
       if (account?.address && allUsers) {
-        const updatedRequests = await getFriendRequests();
-        setFriendRequests(updatedRequests);
+        setIsLoadingRequests(true);
+        try {
+          const updatedRequests = await getFriendRequests();
+          setFriendRequests(updatedRequests);
+        } finally {
+          setIsLoadingRequests(false);
+        }
       }
     },
     onFriendRequestAccepted: async () => {
       // Refresh both friends and requests when a request is accepted
       refetchFriends();
       if (account?.address && allUsers) {
-        const updatedRequests = await getFriendRequests();
-        setFriendRequests(updatedRequests);
+        setIsLoadingRequests(true);
+        try {
+          const updatedRequests = await getFriendRequests();
+          setFriendRequests(updatedRequests);
+        } finally {
+          setIsLoadingRequests(false);
+        }
       }
     },
     onFriendAdded: async () => {
@@ -195,8 +216,13 @@ export default function FriendsScreen() {
     onFriendRequestCancelled: async () => {
       // Refresh friend requests when a request is cancelled
       if (account?.address && allUsers) {
-        const updatedRequests = await getFriendRequests();
-        setFriendRequests(updatedRequests);
+        setIsLoadingRequests(true);
+        try {
+          const updatedRequests = await getFriendRequests();
+          setFriendRequests(updatedRequests);
+        } finally {
+          setIsLoadingRequests(false);
+        }
       }
     },
     onFriendRemoved: async () => {
@@ -363,7 +389,13 @@ export default function FriendsScreen() {
         >
           {showRequests ? (
             // Friend Requests View
-            friendRequests.length === 0 ? (
+            isLoadingRequests ? (
+              <ThemedView style={styles.loadingContainer}>
+                <ThemedText style={styles.loadingText}>
+                  Loading requests...
+                </ThemedText>
+              </ThemedView>
+            ) : friendRequests.length === 0 ? (
               <ThemedView style={styles.emptyContainer}>
                 <ThemedText style={styles.emptyText}>
                   No pending friend requests
