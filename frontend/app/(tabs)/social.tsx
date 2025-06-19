@@ -1,15 +1,21 @@
 import React from 'react';
-import { StyleSheet, StatusBar, ScrollView } from 'react-native';
+import { StyleSheet, StatusBar, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
+import { router } from 'expo-router';
+import { ThemedButton } from '@/components/ThemedButton';
 
 export default function SocialScreen() {
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
     PressStart2P_400Regular,
   });
+
+  const handleGoToFriends = () => {
+    router.push('/(screens)/friends');
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -33,8 +39,23 @@ export default function SocialScreen() {
             <ThemedText style={styles.sectionTitle}>
               Social Features
             </ThemedText>
+            
+            <TouchableOpacity
+              style={styles.friendsButton}
+              onPress={handleGoToFriends}
+            >
+              <Image 
+                source={require("@/assets/images/logo.png")}
+                style={styles.buttonImage}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.friendsButtonText}>
+                Friends
+              </ThemedText>
+            </TouchableOpacity>
+            
             <ThemedText style={styles.comingSoonText}>
-              Social features coming soon...
+              More social features coming soon...
             </ThemedText>
           </ThemedView>
         </ScrollView>
@@ -91,6 +112,30 @@ const styles = StyleSheet.create({
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 10,
     color: '#4a7c59',
+    textAlign: 'center',
+  },
+  friendsButton: {
+    backgroundColor: '#4a7c59',
+    borderRadius: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    marginVertical: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  buttonImage: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+  },
+  friendsButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 12,
+    color: 'white',
     textAlign: 'center',
   },
 }); 

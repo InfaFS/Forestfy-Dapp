@@ -179,17 +179,9 @@ export default function ConfigScreen() {
 		}
 	};
 
-	const handleGoToMarketplace = () => {
-		router.push('/(screens)/marketplace');
-	};
 
-	const handleGoToMyNFTs = () => {
-		router.push('/(screens)/my-nfts');
-	};
 
-	const handleGoToFriends = () => {
-		router.push('/(screens)/friends');
-	};
+
 
 	const handleRegisterUser = () => {
 		setShowRegisterUserAlert(true);
@@ -325,56 +317,9 @@ export default function ConfigScreen() {
 								</View>
 							</TouchableOpacity>
 
-							{/* Custom Marketplace Button with OK button styling */}
-							<TouchableOpacity
-								style={styles.customButton}
-								onPress={handleGoToMarketplace}
-							>
-								<Image 
-									source={require("@/assets/images/coin.png")}
-									style={styles.buttonImage}
-									resizeMode="contain"
-								/>
-								<View style={styles.textContainer}>
-									<ThemedText style={styles.customButtonText}>
-										Marketplace
-									</ThemedText>
-								</View>
-							</TouchableOpacity>
 
-							{/* Custom My NFTs Button with OK button styling */}
-							<TouchableOpacity
-								style={styles.customButton}
-								onPress={handleGoToMyNFTs}
-							>
-								<Image 
-									source={require("@/assets/images/logo.png")}
-									style={styles.buttonImage}
-									resizeMode="contain"
-								/>
-								<View style={styles.textContainer}>
-									<ThemedText style={styles.customButtonText}>
-										My NFTs
-									</ThemedText>
-								</View>
-							</TouchableOpacity>
 
-							{/* Custom Friends Button with OK button styling */}
-							<TouchableOpacity
-								style={styles.customButton}
-								onPress={handleGoToFriends}
-							>
-								<Image 
-									source={require("@/assets/images/logo.png")}
-									style={styles.buttonImage}
-									resizeMode="contain"
-								/>
-								<View style={styles.textContainer}>
-									<ThemedText style={styles.customButtonText}>
-										Friends
-									</ThemedText>
-								</View>
-							</TouchableOpacity>
+
 						</>
 					) : (
 						/* Register Button for unregistered users */
