@@ -166,9 +166,6 @@ export default function FriendForestScreen() {
 					>
 						<ThemedText style={styles.backButtonText}>←</ThemedText>
 					</TouchableOpacity>
-					<ThemedText style={styles.title}>
-						{friendName}'s Forest
-					</ThemedText>
 				</ThemedView>
 
 				<ThemedView style={styles.contentContainer}>

@@ -264,7 +264,7 @@ export default function ConfigScreen() {
 						onPress={handleDisconnect}
 					>
 						<Image 
-							source={require("@/assets/images/logo.png")}
+							source={require("@/assets/images/cerrar.png")}
 							style={styles.buttonImage}
 							resizeMode="contain"
 						/>

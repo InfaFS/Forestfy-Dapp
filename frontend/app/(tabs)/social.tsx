@@ -504,7 +504,7 @@ export default function SocialScreen() {
                               }}
                             >
                               <ThemedText style={styles.viewForestButtonText}>
-                                Forest View
+                                Visit
                               </ThemedText>
                             </TouchableOpacity>
                             <TouchableOpacity
