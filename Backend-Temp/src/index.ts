@@ -2,7 +2,12 @@ import express, { Request, Response, Router, RequestHandler } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { ethers } from "ethers";
-import { ForestNFTAbi, ForestTokenAbi, FrestMarketplaceAbi } from "./abis/abi";
+import {
+  ForestNFTAbi,
+  ForestTokenAbi,
+  FrestMarketplaceAbi,
+  UserRegistryAbi,
+} from "./abis/abi";
 import path from "path";
 
 // Configurar dotenv con la ruta absoluta al archivo .env
@@ -39,6 +44,12 @@ const tokenContract = new ethers.Contract(
 const marketplaceContract = new ethers.Contract(
   process.env.MARKETPLACE_CONTRACT_ADDRESS!,
   FrestMarketplaceAbi,
+  wallet
+);
+
+const userRegistryContract = new ethers.Contract(
+  process.env.USER_CONTRACT_ADDRESS!,
+  UserRegistryAbi,
   wallet
 );
 
@@ -632,6 +643,356 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
       errorMessage = "NFT is not listed for sale";
     } else if (err.message.includes("Cannot buy your own NFT")) {
       errorMessage = "Cannot buy your own NFT";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// Métodos administrativos para gestión de usuarios
+
+router.post("/register-user", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de registro administrativo de usuario recibida"
+  );
+
+  try {
+    const { userAddress, name } = req.body;
+
+    // Validar parámetros
+    if (!userAddress) {
+      console.log("❌ Error: userAddress no proporcionado");
+      res.status(400).json({ error: "User address is required" });
+      return;
+    }
+
+    if (!name) {
+      console.log("❌ Error: name no proporcionado");
+      res.status(400).json({ error: "Name is required" });
+      return;
+    }
+
+    // Validar formato de address
+    if (!ethers.isAddress(userAddress)) {
+      console.log("❌ Error: Address no válido");
+      res.status(400).json({ error: "Invalid address format" });
+      return;
+    }
+
+    console.log(`👤 Registrando usuario: ${userAddress}`);
+    console.log(`📝 Nombre: ${name}`);
+
+    // Llamar al método registerUserAdmin del contrato
+    const tx = await userRegistryContract.registerUserAdmin(userAddress, name);
+    await tx.wait();
+
+    console.log("✅ Usuario registrado exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      userAddress: userAddress,
+      name: name,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario ya registrado")) {
+      errorMessage = "User already registered";
+    } else if (err.message.includes("Nombre ya tomado")) {
+      errorMessage = "Name already taken";
+    } else if (err.message.includes("Nombre no puede estar vacio")) {
+      errorMessage = "Name cannot be empty";
+    } else if (err.message.includes("Nombre demasiado largo")) {
+      errorMessage = "Name too long (max 50 characters)";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.post("/send-friend-request", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de enviar solicitud de amistad administrativamente recibida"
+  );
+
+  try {
+    const { fromAddress, toAddress } = req.body;
+
+    // Validar parámetros
+    if (!fromAddress) {
+      console.log("❌ Error: fromAddress no proporcionado");
+      res.status(400).json({ error: "From address is required" });
+      return;
+    }
+
+    if (!toAddress) {
+      console.log("❌ Error: toAddress no proporcionado");
+      res.status(400).json({ error: "To address is required" });
+      return;
+    }
+
+    // Validar formato de addresses
+    if (!ethers.isAddress(fromAddress)) {
+      console.log("❌ Error: fromAddress no válido");
+      res.status(400).json({ error: "Invalid from address format" });
+      return;
+    }
+
+    if (!ethers.isAddress(toAddress)) {
+      console.log("❌ Error: toAddress no válido");
+      res.status(400).json({ error: "Invalid to address format" });
+      return;
+    }
+
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`📤 Enviando solicitud a: ${toAddress}`);
+
+    // Llamar al método sendFriendRequestAdmin del contrato
+    const tx = await userRegistryContract.sendFriendRequestAdmin(
+      fromAddress,
+      toAddress
+    );
+    await tx.wait();
+
+    console.log("✅ Solicitud de amistad enviada exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      fromAddress: fromAddress,
+      toAddress: toAddress,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario no registrado")) {
+      errorMessage = "User not registered";
+    } else if (
+      err.message.includes("No puedes enviarte solicitud a ti mismo")
+    ) {
+      errorMessage = "Cannot send friend request to yourself";
+    } else if (err.message.includes("Ya es tu amigo")) {
+      errorMessage = "Already friends";
+    } else if (err.message.includes("Ya enviaste solicitud a este usuario")) {
+      errorMessage = "Friend request already sent";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.post("/accept-friend-request", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de aceptar solicitud de amistad administrativamente recibida"
+  );
+
+  try {
+    const { fromAddress, toAddress } = req.body;
+
+    // Validar parámetros
+    if (!fromAddress) {
+      console.log("❌ Error: fromAddress no proporcionado");
+      res.status(400).json({ error: "From address is required" });
+      return;
+    }
+
+    if (!toAddress) {
+      console.log("❌ Error: toAddress no proporcionado");
+      res.status(400).json({ error: "To address is required" });
+      return;
+    }
+
+    // Validar formato de addresses
+    if (!ethers.isAddress(fromAddress)) {
+      console.log("❌ Error: fromAddress no válido");
+      res.status(400).json({ error: "Invalid from address format" });
+      return;
+    }
+
+    if (!ethers.isAddress(toAddress)) {
+      console.log("❌ Error: toAddress no válido");
+      res.status(400).json({ error: "Invalid to address format" });
+      return;
+    }
+
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`✅ Aceptando solicitud para: ${toAddress}`);
+
+    // Llamar al método acceptFriendRequestAdmin del contrato
+    const tx = await userRegistryContract.acceptFriendRequestAdmin(
+      fromAddress,
+      toAddress
+    );
+    await tx.wait();
+
+    console.log("✅ Solicitud de amistad aceptada exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      fromAddress: fromAddress,
+      toAddress: toAddress,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario no registrado")) {
+      errorMessage = "User not registered";
+    } else if (err.message.includes("No hay solicitud de este usuario")) {
+      errorMessage = "No friend request from this user";
+    } else if (err.message.includes("Ya es tu amigo")) {
+      errorMessage = "Already friends";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.post("/change-name", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de cambio de nombre administrativamente recibida"
+  );
+
+  try {
+    const { userAddress, newName } = req.body;
+
+    // Validar parámetros
+    if (!userAddress) {
+      console.log("❌ Error: userAddress no proporcionado");
+      res.status(400).json({ error: "User address is required" });
+      return;
+    }
+
+    if (!newName) {
+      console.log("❌ Error: newName no proporcionado");
+      res.status(400).json({ error: "New name is required" });
+      return;
+    }
+
+    // Validar formato de address
+    if (!ethers.isAddress(userAddress)) {
+      console.log("❌ Error: userAddress no válido");
+      res.status(400).json({ error: "Invalid user address format" });
+      return;
+    }
+
+    // Validar longitud del nombre
+    if (newName.length === 0) {
+      console.log("❌ Error: Nombre vacío");
+      res.status(400).json({ error: "Name cannot be empty" });
+      return;
+    }
+
+    if (newName.length > 50) {
+      console.log("❌ Error: Nombre demasiado largo");
+      res.status(400).json({ error: "Name too long (max 50 characters)" });
+      return;
+    }
+
+    console.log(`👤 Usuario: ${userAddress}`);
+    console.log(`📝 Nuevo nombre: ${newName}`);
+
+    // Llamar al método changeNameAdmin del contrato
+    const tx = await userRegistryContract.changeNameAdmin(userAddress, newName);
+    await tx.wait();
+
+    console.log("✅ Nombre cambiado exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      userAddress: userAddress,
+      newName: newName,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario no registrado")) {
+      errorMessage = "User not registered";
+    } else if (err.message.includes("Nombre ya tomado")) {
+      errorMessage = "Name already taken";
+    } else if (err.message.includes("Nombre no puede estar vacio")) {
+      errorMessage = "Name cannot be empty";
+    } else if (err.message.includes("Nombre demasiado largo")) {
+      errorMessage = "Name too long (max 50 characters)";
+    } else if (err.message.includes("ForestToken no configurado")) {
+      errorMessage = "ForestToken not configured";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.post("/remove-friend", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de remover amigo administrativamente recibida"
+  );
+
+  try {
+    const { userAddress, friendAddress } = req.body;
+
+    // Validar parámetros
+    if (!userAddress) {
+      console.log("❌ Error: userAddress no proporcionado");
+      res.status(400).json({ error: "User address is required" });
+      return;
+    }
+
+    if (!friendAddress) {
+      console.log("❌ Error: friendAddress no proporcionado");
+      res.status(400).json({ error: "Friend address is required" });
+      return;
+    }
+
+    // Validar formato de addresses
+    if (!ethers.isAddress(userAddress)) {
+      console.log("❌ Error: userAddress no válido");
+      res.status(400).json({ error: "Invalid user address format" });
+      return;
+    }
+
+    if (!ethers.isAddress(friendAddress)) {
+      console.log("❌ Error: friendAddress no válido");
+      res.status(400).json({ error: "Invalid friend address format" });
+      return;
+    }
+
+    console.log(`👤 Usuario: ${userAddress}`);
+    console.log(`👥 Removiendo amigo: ${friendAddress}`);
+
+    // Llamar al método removeFriendAdmin del contrato
+    const tx = await userRegistryContract.removeFriendAdmin(
+      userAddress,
+      friendAddress
+    );
+    await tx.wait();
+
+    console.log("✅ Amigo removido exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      userAddress: userAddress,
+      friendAddress: friendAddress,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario no registrado")) {
+      errorMessage = "User not registered";
+    } else if (err.message.includes("No es tu amigo")) {
+      errorMessage = "Not friends";
     }
 
     res.status(500).json({ error: errorMessage });

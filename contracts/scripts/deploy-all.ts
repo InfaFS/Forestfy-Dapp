@@ -67,9 +67,25 @@ async function main() {
   console.log(`   💰 Marketplace Fee: ${marketplaceFee}%\n`);
 
   // ================================
-  // 4. SETUP AUTHORIZATIONS
+  // 4. DEPLOY USER REGISTRY
   // ================================
-  console.log("4️⃣ Setting up contract authorizations...");
+  console.log("4️⃣ Deploying UserRegistry...");
+  const UserRegistry = await ethers.getContractFactory("UserRegistry");
+  const userRegistry = await UserRegistry.deploy();
+  await userRegistry.waitForDeployment();
+  const userRegistryAddress = await userRegistry.getAddress();
+  console.log(`✅ UserRegistry deployed to: ${userRegistryAddress}`);
+
+  // Verify UserRegistry deployment
+  const userRegistryOwner = await userRegistry.owner();
+  const totalUsers = await userRegistry.getTotalUsers();
+  console.log(`   👑 Owner: ${userRegistryOwner}`);
+  console.log(`   👥 Total Users: ${totalUsers}\n`);
+
+  // ================================
+  // 5. SETUP AUTHORIZATIONS
+  // ================================
+  console.log("5️⃣ Setting up contract authorizations...");
 
   // Authorize Marketplace on ForestNFT
   console.log("   📝 Authorizing Marketplace on ForestNFT...");
@@ -83,12 +99,28 @@ async function main() {
     marketplaceAddress
   );
   await tokenAuthTx.wait();
-  console.log("   ✅ ForestToken authorization complete\n");
+  console.log("   ✅ ForestToken authorization complete");
+
+  // Authorize UserRegistry on ForestToken
+  console.log("   📝 Authorizing UserRegistry on ForestToken...");
+  const userTokenAuthTx = await forestToken.addAuthorizedContract(
+    userRegistryAddress
+  );
+  await userTokenAuthTx.wait();
+  console.log("   ✅ UserRegistry authorization on ForestToken complete");
+
+  // Set ForestToken address in UserRegistry
+  console.log("   📝 Setting ForestToken address in UserRegistry...");
+  const setTokenTx = await (userRegistry as any).setForestTokenAddress(
+    forestTokenAddress
+  );
+  await setTokenTx.wait();
+  console.log("   ✅ ForestToken address set in UserRegistry\n");
 
   // ================================
-  // 5. VERIFICATION
+  // 6. VERIFICATION
   // ================================
-  console.log("5️⃣ Verifying setup...");
+  console.log("6️⃣ Verifying setup...");
 
   // Verify authorizations
   const isNFTAuthorized = await forestNFT.authorizedContracts(
@@ -97,9 +129,13 @@ async function main() {
   const isTokenAuthorized = await forestToken.authorizedContracts(
     marketplaceAddress
   );
+  const isUserRegistryAuthorized = await forestToken.authorizedContracts(
+    userRegistryAddress
+  );
 
   console.log(`   🔐 ForestNFT authorized: ${isNFTAuthorized}`);
   console.log(`   🔐 ForestToken authorized: ${isTokenAuthorized}`);
+  console.log(`   🔐 UserRegistry authorized: ${isUserRegistryAuthorized}`);
 
   // Verify contract connections in Marketplace
   const marketplaceNFTAddress = await marketplace.forestNFT();
@@ -109,9 +145,9 @@ async function main() {
   console.log(`   🔗 Marketplace -> ForestToken: ${marketplaceTokenAddress}\n`);
 
   // ================================
-  // 6. OPTIONAL INITIAL SETUP
+  // 7. OPTIONAL INITIAL SETUP
   // ================================
-  console.log("6️⃣ Optional initial setup...");
+  console.log("7️⃣ Optional initial setup...");
 
   // Example: Assign parcels to deployer for testing
   console.log("   🏞️ Assigning 5 parcels to deployer for testing...");
@@ -127,17 +163,31 @@ async function main() {
   await mintTx.wait();
 
   const deployerTokens = await forestNFT.tokensOfOwner(deployer.address);
-  console.log(`   ✅ Deployer NFTs: [${deployerTokens.join(", ")}]\n`);
+  console.log(`   ✅ Deployer NFTs: [${deployerTokens.join(", ")}]`);
+
+  // Register deployer in UserRegistry for testing
+  console.log("   👤 Registering deployer in UserRegistry...");
+  try {
+    const registerTx = await userRegistry.registerUser("Admin");
+    await registerTx.wait();
+    console.log("   ✅ Deployer registered in UserRegistry");
+  } catch (error: any) {
+    console.log(`   ⚠️ UserRegistry registration note: ${error.message}`);
+  }
+
+  const finalTotalUsers = await userRegistry.getTotalUsers();
+  console.log(`   👥 Final Total Users in Registry: ${finalTotalUsers}\n`);
 
   // ================================
-  // 7. DEPLOYMENT SUMMARY
+  // 8. DEPLOYMENT SUMMARY
   // ================================
   console.log("🎉 DEPLOYMENT COMPLETE!");
   console.log("=".repeat(50));
   console.log("📋 CONTRACT ADDRESSES:");
-  console.log(`   ForestToken:  ${forestTokenAddress}`);
-  console.log(`   ForestNFT:    ${forestNFTAddress}`);
-  console.log(`   Marketplace:  ${marketplaceAddress}`);
+  console.log(`   ForestToken:   ${forestTokenAddress}`);
+  console.log(`   ForestNFT:     ${forestNFTAddress}`);
+  console.log(`   Marketplace:   ${marketplaceAddress}`);
+  console.log(`   UserRegistry:  ${userRegistryAddress}`);
   console.log("=".repeat(50));
   console.log("⚙️  CONFIGURATION:");
   console.log(`   Marketplace Fee: ${marketplaceFee}%`);
@@ -147,16 +197,18 @@ async function main() {
   console.log("✅ AUTHORIZATIONS:");
   console.log(`   Marketplace -> ForestNFT: ${isNFTAuthorized}`);
   console.log(`   Marketplace -> ForestToken: ${isTokenAuthorized}`);
+  console.log(`   UserRegistry -> ForestToken: ${isUserRegistryAuthorized}`);
   console.log("=".repeat(50));
 
   // ================================
-  // 8. NEXT STEPS
+  // 9. NEXT STEPS
   // ================================
   console.log("📝 NEXT STEPS:");
   console.log("1. Update your backend .env with the new contract addresses:");
   console.log(`   FOREST_TOKEN_ADDRESS=${forestTokenAddress}`);
   console.log(`   FOREST_NFT_ADDRESS=${forestNFTAddress}`);
   console.log(`   MARKETPLACE_ADDRESS=${marketplaceAddress}`);
+  console.log(`   USER_CONTRACT_ADDRESS=${userRegistryAddress}`);
   console.log("");
   console.log("2. Update your frontend configuration with the new addresses");
   console.log("");
@@ -176,9 +228,12 @@ async function main() {
   console.log(
     `   npx hardhat verify ${marketplaceAddress} ${forestNFTAddress} ${forestTokenAddress} --network <network>`
   );
+  console.log(
+    `   npx hardhat verify ${userRegistryAddress} --network <network>`
+  );
 
   // ================================
-  // 9. SAVE DEPLOYMENT INFO
+  // 10. SAVE DEPLOYMENT INFO
   // ================================
   const deploymentInfo = {
     network: (await ethers.provider.getNetwork()).name,
@@ -189,10 +244,12 @@ async function main() {
       ForestToken: forestTokenAddress,
       ForestNFT: forestNFTAddress,
       Marketplace: marketplaceAddress,
+      UserRegistry: userRegistryAddress,
     },
     configuration: {
       marketplaceFee: marketplaceFee.toString(),
       treesPerParcel: treesPerParcel.toString(),
+      totalUsers: finalTotalUsers.toString(),
     },
   };
 

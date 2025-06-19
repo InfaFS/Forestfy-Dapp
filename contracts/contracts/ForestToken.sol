@@ -88,7 +88,10 @@ contract ForestToken is ERC20, Ownable {
         emit VirtualTransfer(from, to, amount);
     }
 
-    function virtualBurn(address from, uint256 amount) public onlyOwner {
+    function virtualBurn(
+        address from,
+        uint256 amount
+    ) public onlyOwnerOrAuthorized {
         require(virtualBalance[from] >= amount, "Saldo virtual insuficiente");
         require(
             balanceOf(address(this)) >= amount,

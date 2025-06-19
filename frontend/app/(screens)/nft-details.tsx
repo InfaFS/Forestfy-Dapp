@@ -17,6 +17,8 @@ import { formatPrice, formatAddress, formatDate, extractRarity, getRarityColor }
 import { NFTBuyButton } from '@/components/marketplace/NFTBuyButton';
 import { NOTIFICATION_MESSAGES } from '@/constants/NotificationStyles';
 import { DeviceEventEmitter } from 'react-native';
+import { readContract } from 'thirdweb';
+import { UserRegistryContract } from '@/constants/thirdweb';
 
 interface Listing {
   tokenId: bigint;
@@ -35,6 +37,7 @@ export default function NFTDetailsScreen() {
   const [confirmBuyFunction, setConfirmBuyFunction] = useState<(() => Promise<void>) | null>(null);
   const [isPurchaseInProgress, setIsPurchaseInProgress] = useState(false);
   const [cachedListing, setCachedListing] = useState<Listing | null>(null);
+  const [sellerUsername, setSellerUsername] = useState<string | null>(null);
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -57,6 +60,34 @@ export default function NFTDetailsScreen() {
       setCachedListing(listing);
     }
   }, [listing, cachedListing, isPurchaseInProgress, tokenId]);
+
+  // Obtener el username del seller
+  useEffect(() => {
+    const getSellerUsername = async () => {
+      const currentListing = (isPurchaseInProgress && cachedListing) ? cachedListing : listing;
+      if (currentListing && currentListing.seller) {
+        try {
+          const userInfo = await readContract({
+            contract: UserRegistryContract,
+            method: "function getUserInfo(address) view returns (string name, address userAddress, bool exists, address[] friends, uint256 createdAt)",
+            params: [currentListing.seller],
+          });
+          
+          // userInfo[0] es el nombre, userInfo[2] es el exists flag
+          if (userInfo[2] && userInfo[0]) { // exists && name
+            setSellerUsername(userInfo[0]);
+          } else {
+            setSellerUsername(null);
+          }
+        } catch (error) {
+          console.error("Error getting seller username:", error);
+          setSellerUsername(null);
+        }
+      }
+    };
+
+    getSellerUsername();
+  }, [listing, cachedListing, isPurchaseInProgress]);
 
   // Función para actualizar datos del comprador con reintentos agresivos
   const updateBuyerDataAfterPurchase = () => {
@@ -234,7 +265,7 @@ export default function NFTDetailsScreen() {
                 </ThemedView>
 
                 <ThemedText style={styles.ownerText}>
-                  Owner: {currentListing ? formatAddress(currentListing.seller) : 'Loading owner...'}
+                  Owner: {currentListing ? (sellerUsername || formatAddress(currentListing.seller)) : 'Loading owner...'}
                 </ThemedText>
                 
                 {currentListing && (

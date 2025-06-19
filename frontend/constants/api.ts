@@ -10,6 +10,9 @@ export const API_ENDPOINTS = {
   buyNFT: `${API_BASE_URL}/buy-nft`,
   listNFT: `${API_BASE_URL}/list-nft`,
   unlistNFT: `${API_BASE_URL}/unlist-nft`,
+  registerUser: `${API_BASE_URL}/register-user`,
+  changeName: `${API_BASE_URL}/change-name`,
+  sendFriendRequest: `${API_BASE_URL}/send-friend-request`,
 } as const;
 
 export const reclaimReward = async (address: string) => {
@@ -216,6 +219,77 @@ export const unlistNFT = async (address: string, tokenId: string) => {
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error unlisting NFT");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const registerUser = async (userAddress: string, name: string) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.registerUser, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userAddress, name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error al registrar usuario");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const changeName = async (userAddress: string, newName: string) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.changeName, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userAddress, newName }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error al cambiar nombre");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const sendFriendRequest = async (
+  fromAddress: string,
+  toAddress: string
+) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.sendFriendRequest, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fromAddress, toAddress }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error || "Error al enviar solicitud de amistad"
+      );
     }
 
     return response.json();
