@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, StatusBar, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, StatusBar, ScrollView, RefreshControl, Image } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -7,18 +7,47 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 import { useActiveListings } from '@/hooks/useMarketplaceListing';
 import { MarketplaceNFTItem } from '@/components/marketplace/MarketplaceNFTItem';
 import { EmptyState } from '@/components/common/EmptyState';
-import { MarketplaceContract } from '@/constants/thirdweb';
+import { MarketplaceContract, TokenContract } from '@/constants/thirdweb';
 import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
 import { EventToast } from '@/components/common/EventToast';
+import { useActiveAccount, useReadContract } from 'thirdweb/react';
 
 export default function MarketplaceTab() {
+  const account = useActiveAccount();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'listed' | 'unlisted' | 'sold'>('listed');
+  const [tokenBalance, setTokenBalance] = useState<string>("0");
   
   // Hook para obtener listings activos (ya incluye eventos en tiempo real)
   const { activeListingIds, loadingIds, refetchIds } = useActiveListings();
+
+  // Leer el balance de tokens
+  const { data: balanceData, refetch: refetchBalance } = useReadContract({
+    contract: TokenContract,
+    method: "function virtualBalance(address) view returns (uint256)",
+    params: [account?.address || "0x0000000000000000000000000000000000000000"],
+    queryOptions: {
+      enabled: !!account?.address,
+    },
+  });
+
+  // Función para refrescar el balance
+  const refreshBalance = useCallback(async () => {
+    try {
+      await refetchBalance();
+    } catch (error) {
+      console.error("Error refreshing balance:", error);
+    }
+  }, [refetchBalance]);
+
+  useEffect(() => {
+    if (balanceData !== undefined) {
+      const balance = Number(balanceData) / 1e18;
+      setTokenBalance(balance.toFixed(2));
+    }
+  }, [balanceData]);
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -65,7 +94,7 @@ export default function MarketplaceTab() {
           <StatusBar barStyle="dark-content" />
           <ThemedView style={styles.titleContainer}>
             <ThemedText type="title" style={styles.title}>
-              Marketplace
+              Market
             </ThemedText>
           </ThemedView>
           <EmptyState message="Marketplace not available. Please check configuration." />
@@ -78,10 +107,19 @@ export default function MarketplaceTab() {
     <ProtectedRoute>
       <ThemedView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <ThemedView style={styles.titleContainer}>
+        {/* Header con balance en esquina superior derecha */}
+        <ThemedView style={styles.header}>
           <ThemedText type="title" style={styles.title}>
-            Marketplace
+            Market
           </ThemedText>
+          <ThemedView style={styles.balanceContainer}>
+            <ThemedText style={styles.balanceText}>{tokenBalance}</ThemedText>
+            <Image 
+              source={require("@/assets/images/coin.png")}
+              style={styles.coinIcon}
+              resizeMode="contain"
+            />
+          </ThemedView>
         </ThemedView>
         
         <ScrollView 
@@ -129,9 +167,48 @@ export default function MarketplaceTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fef5eb',
+  },
+  header: {
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginTop: 40,
+    marginBottom: 20,
+  },
+  title: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 18,
+    color: '#000000',
+    textAlign: 'center',
+    flex: 1,
+  },
+  balanceContainer: {
+    position: 'absolute',
+    right: 20,
+    top: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#2d5016',
+  },
+  balanceText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#2d5016',
+    marginRight: 6,
+  },
+  coinIcon: {
+    width: 16,
+    height: 16,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -143,16 +220,13 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     position: 'relative',
   },
-  title: {
-    fontFamily: 'PressStart2P_400Regular',
-    fontSize: 18,
-    textAlign: 'center',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
     gap: 16,
   },
   loadingContainer: {
