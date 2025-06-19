@@ -481,8 +481,8 @@ const styles = StyleSheet.create({
 		borderColor: '#d4572a',
 	},
 	disconnectButton: {
-		backgroundColor: '#ff4d4d', // Color rojo para disconnect
-		borderColor: '#d42a2a',
+		backgroundColor: '#7c1f1f', // Color rojo para disconnect
+		borderColor: '#8b2e2e',
 	},
 	welcomeMessage: {
 		fontFamily: 'PressStart2P_400Regular',
