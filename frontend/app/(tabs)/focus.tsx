@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, StatusBar, TextInput, Animated, Easing, Text, Modal, Pressable, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, StatusBar, TextInput, Animated, Easing, Text, Modal, Pressable, Alert, AppState } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedButton } from "@/components/ThemedButton";
@@ -18,6 +18,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RewardAlert } from "@/components/RewardAlert";
 import { ConfirmTreeAlert } from "@/components/ConfirmTreeAlert";
 import { ConfirmRewardAlert } from "@/components/ConfirmRewardAlert";
+import { ResumeTimerAlert } from "@/components/ResumeTimerAlert";
+import { SessionLostAlert } from "@/components/SessionLostAlert";
 import { DeviceEventEmitter } from 'react-native';
 
 // Componente TimeSlider personalizado
@@ -182,6 +184,18 @@ export default function FocusScreen() {
 	const [showConfirmRewardAlert, setShowConfirmRewardAlert] = useState(false);
 	const [rewardAlertType, setRewardAlertType] = useState<'tokens' | 'mint'>('tokens');
 	const [rewardAmount, setRewardAmount] = useState(0);
+	const [showResumeTimerAlert, setShowResumeTimerAlert] = useState(false);
+	const [showSessionLostAlert, setShowSessionLostAlert] = useState(false);
+	const [lostTokensAmount, setLostTokensAmount] = useState("");
+	
+	// Estados para manejo de AppState y contador de abandono
+	const [appState, setAppState] = useState(AppState.currentState);
+	const [pausedTimeRemaining, setPausedTimeRemaining] = useState<number | null>(null);
+	const [abandonmentCountdown, setAbandonmentCountdown] = useState<number | null>(null);
+	const [isShowingAbandonmentWarning, setIsShowingAbandonmentWarning] = useState(false);
+	const [abandonmentStartTime, setAbandonmentStartTime] = useState<number | null>(null);
+	const abandonmentTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const focusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	// Cargar fuentes
 	const [fontsLoaded] = useFonts({
@@ -255,23 +269,243 @@ export default function FocusScreen() {
 		return () => clearInterval(interval);
 	}, [fetchBalance]);
 
-	// Timer effect
-	useEffect(() => {
-		let interval: ReturnType<typeof setInterval>;
-		if (timerActive && timeRemaining > 0) {
-			interval = setInterval(() => {
-				setTimeRemaining((prev) => {
-					if (prev <= 1) {
-						setTimerActive(false);
-						setTimerCompleted(true);
-						return 0;
-					}
-					return prev - 1;
-				});
+	// Functions to handle app abandonment
+	const handleAppStateChange = useCallback((nextAppState: 'active' | 'background' | 'inactive' | 'unknown' | 'extension') => {
+		console.log('📱 AppState changed from', appState, 'to', nextAppState);
+		
+		// If timer is active and app leaves active state
+		const shouldPauseTimer = timerActive && appState === 'active' && nextAppState !== 'active' && pausedTimeRemaining === null;
+		
+		if (shouldPauseTimer) {
+			console.log('⏸️ App left active state, pausing timer');
+			// Pausar el timer principal
+			if (focusTimerRef.current) {
+				clearInterval(focusTimerRef.current);
+				focusTimerRef.current = null;
+			}
+			
+			// Guardar el tiempo restante
+			setPausedTimeRemaining(timeRemaining);
+			
+			// Start abandonment timer based on timestamp
+			const startTime = Date.now();
+			console.log('🚨 Starting 10s abandonment timer');
+			setAbandonmentStartTime(startTime);
+			setAbandonmentCountdown(10);
+			setIsShowingAbandonmentWarning(true);
+			
+			// Clear previous timer if exists
+			if (abandonmentTimerRef.current) {
+				clearInterval(abandonmentTimerRef.current);
+			}
+			
+			abandonmentTimerRef.current = setInterval(() => {
+				const elapsedTime = Date.now() - startTime;
+				const remainingTime = Math.max(0, 10000 - elapsedTime);
+				const remainingSeconds = Math.ceil(remainingTime / 1000);
+				
+				console.log(`⏰ Abandonment timer: ${remainingSeconds}s remaining`);
+				
+				if (remainingTime <= 0) {
+					console.log('⏰ Abandonment timer: 0s - Executing session loss');
+					handleAbandonSession();
+				} else {
+					setAbandonmentCountdown(remainingSeconds);
+				}
 			}, 1000);
 		}
-		return () => clearInterval(interval);
-	}, [timerActive, timeRemaining]);
+		
+		// If app returns to foreground and there's a paused timer
+		if (nextAppState === 'active' && pausedTimeRemaining !== null && pausedTimeRemaining > 0) {
+			console.log('▶️ App returned to foreground');
+			
+			// Check if 10 seconds have already passed
+			if (abandonmentStartTime) {
+				const elapsedTime = Date.now() - abandonmentStartTime;
+				
+				if (elapsedTime >= 10000) {
+					console.log('⚠️ More than 10 seconds away, executing session abandonment');
+					handleAbandonSession();
+					return;
+				}
+			}
+			
+			// Cancel abandonment counter if it still exists
+			if (abandonmentTimerRef.current) {
+				clearInterval(abandonmentTimerRef.current);
+				abandonmentTimerRef.current = null;
+			}
+			
+			// Clear abandonment warning state
+			setAbandonmentCountdown(null);
+			setIsShowingAbandonmentWarning(false);
+			setAbandonmentStartTime(null);
+			
+			// Show resume alert instead of automatically resuming
+			setShowResumeTimerAlert(true);
+		}
+		
+		// If app returns to foreground but no paused timer (session lost)
+		if (nextAppState === 'active' && pausedTimeRemaining === null && !timerActive && !timerCompleted) {
+			// Ensure everything is clean
+			setAbandonmentCountdown(null);
+			setIsShowingAbandonmentWarning(false);
+			setShowResumeTimerAlert(false);
+		}
+		
+		setAppState(nextAppState);
+	}, [appState, timerActive, timeRemaining, pausedTimeRemaining]);
+
+	const checkAbandonmentTime = useCallback(() => {
+		if (abandonmentStartTime) {
+			const elapsedTime = Date.now() - abandonmentStartTime;
+			const remainingTime = Math.max(0, 10000 - elapsedTime); // 10 segundos en ms
+			const remainingSeconds = Math.ceil(remainingTime / 1000);
+			
+			console.log(`🕐 Tiempo transcurrido: ${elapsedTime}ms, restante: ${remainingSeconds}s`);
+			
+			if (remainingTime <= 0) {
+				return true; // Tiempo agotado
+			}
+			
+			setAbandonmentCountdown(remainingSeconds);
+			return false;
+		}
+		return false;
+	}, [abandonmentStartTime]);
+
+	const handleAbandonSession = useCallback(() => {
+		console.log('❌ Session abandoned, losing tokens');
+		
+		// Save tokens amount before reset
+		setLostTokensAmount(inputValue);
+		
+		// Clear all timers immediately
+		if (focusTimerRef.current) {
+			clearInterval(focusTimerRef.current);
+			focusTimerRef.current = null;
+		}
+		if (abandonmentTimerRef.current) {
+			clearInterval(abandonmentTimerRef.current);
+			abandonmentTimerRef.current = null;
+		}
+		
+		// Reset all states immediately
+		setTimerActive(false);
+		setTimerCompleted(false);
+		setSelectedTimer(null);
+		setInputValue("");
+		setPotentialReward(null);
+		setTimeRemaining(0);
+		setPausedTimeRemaining(null);
+		setAbandonmentCountdown(null);
+		setIsShowingAbandonmentWarning(false);
+		setShowResumeTimerAlert(false);
+		setAbandonmentStartTime(null);
+		
+		// Show session lost alert
+		setShowSessionLostAlert(true);
+	}, [inputValue]);
+
+	const startFocusTimer = useCallback(() => {
+		if (focusTimerRef.current) {
+			clearInterval(focusTimerRef.current);
+		}
+		
+		focusTimerRef.current = setInterval(() => {
+			setTimeRemaining((prev) => {
+				if (prev <= 1) {
+					setTimerActive(false);
+					setTimerCompleted(true);
+					if (focusTimerRef.current) {
+						clearInterval(focusTimerRef.current);
+						focusTimerRef.current = null;
+					}
+					return 0;
+				}
+				return prev - 1;
+			});
+		}, 1000);
+	}, []);
+
+	const handleResumeTimer = useCallback(() => {
+		console.log('▶️ Resuming focus timer');
+		
+		if (pausedTimeRemaining !== null && pausedTimeRemaining > 0) {
+			// Restore main timer
+			setTimeRemaining(pausedTimeRemaining);
+			setPausedTimeRemaining(null);
+			
+			// Restart focus timer
+			startFocusTimer();
+		}
+		
+		// Close alert
+		setShowResumeTimerAlert(false);
+	}, [pausedTimeRemaining, startFocusTimer]);
+
+	// Timer effect actualizado
+	useEffect(() => {
+		if (timerActive && timeRemaining > 0 && appState === 'active' && !pausedTimeRemaining) {
+			startFocusTimer();
+		}
+		
+		return () => {
+			if (focusTimerRef.current) {
+				clearInterval(focusTimerRef.current);
+				focusTimerRef.current = null;
+			}
+		};
+	}, [timerActive, timeRemaining, appState, pausedTimeRemaining, startFocusTimer]);
+
+	// Verify abandonment time when component remounts
+	useEffect(() => {
+		if (abandonmentStartTime && pausedTimeRemaining !== null) {
+			const elapsedTime = Date.now() - abandonmentStartTime;
+			const remainingTime = Math.max(0, 10000 - elapsedTime);
+			
+			if (remainingTime <= 0) {
+				console.log('⚠️ Abandonment time exceeded during remount, executing session loss');
+				handleAbandonSession();
+			} else {
+				// Restore abandonment timer
+				if (abandonmentTimerRef.current) {
+					clearInterval(abandonmentTimerRef.current);
+				}
+				
+				abandonmentTimerRef.current = setInterval(() => {
+					const currentElapsed = Date.now() - abandonmentStartTime;
+					const currentRemaining = Math.max(0, 10000 - currentElapsed);
+					const currentSeconds = Math.ceil(currentRemaining / 1000);
+					
+					console.log(`⏰ Abandonment timer (restored): ${currentSeconds}s remaining`);
+					
+					if (currentRemaining <= 0) {
+						console.log('⏰ Abandonment timer: 0s - Executing session loss');
+						handleAbandonSession();
+					} else {
+						setAbandonmentCountdown(currentSeconds);
+					}
+				}, 1000);
+			}
+		}
+	}, [abandonmentStartTime, pausedTimeRemaining, handleAbandonSession]);
+
+	// AppState listener
+	useEffect(() => {
+		const subscription = AppState.addEventListener('change', handleAppStateChange);
+		
+		return () => {
+			subscription?.remove();
+			// Limpiar timers al desmontar
+			if (focusTimerRef.current) {
+				clearInterval(focusTimerRef.current);
+			}
+			if (abandonmentTimerRef.current) {
+				clearInterval(abandonmentTimerRef.current);
+			}
+		};
+	}, [handleAppStateChange]);
 
 	const calculateReward = (tokens: number, seconds: number) => {
 		let factor = 0;
@@ -353,7 +587,8 @@ export default function FocusScreen() {
 			console.log('💰 Tokens invertidos, actualizando balance...');
 			updateBalance();
 			
-			// Si la reducción fue exitosa, iniciamos el timer
+			// If reduction was successful, start the timer
+			console.log('▶️ Starting focus timer');
 			setTimerActive(true);
 		} catch (error) {
 			console.error("Error processing tokens. Please try again.");
@@ -546,6 +781,8 @@ export default function FocusScreen() {
 									Stay focused! Your tree is growing...
 								</ThemedText>
 							</ThemedView>
+
+
 						</>
 					) : (
 						<>
@@ -782,6 +1019,20 @@ export default function FocusScreen() {
 					}}
 				/>
 
+				{/* Resume Timer Alert */}
+				<ResumeTimerAlert
+					show={showResumeTimerAlert}
+					timeRemaining={pausedTimeRemaining || 0}
+					onClose={() => setShowResumeTimerAlert(false)}
+					onResume={handleResumeTimer}
+				/>
+
+				{/* Session Lost Alert */}
+				<SessionLostAlert
+					show={showSessionLostAlert}
+					tokensLost={lostTokensAmount}
+					onClose={() => setShowSessionLostAlert(false)}
+				/>
 
 			</ThemedView>
 		</ProtectedRoute>
@@ -1219,5 +1470,6 @@ const styles = StyleSheet.create({
 		color: '#4a7c59',
 		textAlign: 'center',
 	},
+
 
 }); 
