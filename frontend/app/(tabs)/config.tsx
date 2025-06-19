@@ -179,10 +179,6 @@ export default function ConfigScreen() {
 		}
 	};
 
-
-
-
-
 	const handleRegisterUser = () => {
 		setShowRegisterUserAlert(true);
 	};
@@ -238,7 +234,7 @@ export default function ConfigScreen() {
 			<StatusBar barStyle="dark-content" />
 			<ThemedView style={styles.titleContainer}>
 				<ThemedText type="title" style={{fontFamily: 'PressStart2P_400Regular', fontSize: 18, textAlign: 'center'}}>
-					Social
+					Config
 				</ThemedText>
 			</ThemedView>
 
@@ -263,12 +259,21 @@ export default function ConfigScreen() {
 						</>
 					) : null}
 					
-					<ThemedButton
-						title="Disconnect"
+					<TouchableOpacity
+						style={[styles.customButton, styles.disconnectButton]}
 						onPress={handleDisconnect}
-						variant="secondary"
-						pixelFont={true}
-					/>
+					>
+						<Image 
+							source={require("@/assets/images/logo.png")}
+							style={styles.buttonImage}
+							resizeMode="contain"
+						/>
+						<View style={styles.textContainer}>
+							<ThemedText style={styles.customButtonText}>
+								Disconnect
+							</ThemedText>
+						</View>
+					</TouchableOpacity>
 
 					{/* Conditional buttons based on user registration */}
 					{isUserRegistered ? (
@@ -474,6 +479,10 @@ const styles = StyleSheet.create({
 	registerButton: {
 		backgroundColor: '#ff6b35', // Color diferente para destacar el registro
 		borderColor: '#d4572a',
+	},
+	disconnectButton: {
+		backgroundColor: '#ff4d4d', // Color rojo para disconnect
+		borderColor: '#d42a2a',
 	},
 	welcomeMessage: {
 		fontFamily: 'PressStart2P_400Regular',
