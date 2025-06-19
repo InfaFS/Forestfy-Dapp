@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 
 interface PixelTabIconProps {
-  type: 'trees' | 'focus' | 'social';
+  type: 'trees' | 'focus' | 'social' | 'social_new' | 'marketplace' | 'config';
   focused: boolean;
   color: string;
 }
@@ -17,6 +17,12 @@ export const PixelTabIcon: React.FC<PixelTabIconProps> = ({ type, focused, color
         return require('../../public/home.png');
       case 'social':
         return require('../../public/social.png');
+      case 'social_new':
+        return require('../../public/social.png');
+      case 'marketplace':
+        return require('../../public/marketplace-icon.png');
+      case 'config':
+        return require('../../public/config-icon.png');
       default:
         return require('../../public/home.png');
     }

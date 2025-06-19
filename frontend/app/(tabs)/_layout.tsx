@@ -43,6 +43,19 @@ export default function TabLayout() {
 				}}
 			/>
 			<Tabs.Screen
+				name="marketplace"
+				options={{
+					title: "Market",
+					tabBarIcon: ({ color, focused }) => (
+						<PixelTabIcon
+							type="marketplace"
+							focused={focused}
+							color={color}
+						/>
+					),
+				}}
+			/>
+			<Tabs.Screen
 				name="focus"
 				options={{
 					title: "Home",
@@ -56,12 +69,25 @@ export default function TabLayout() {
 				}}
 			/>
 			<Tabs.Screen
-				name="config"
+				name="social"
 				options={{
 					title: "Social",
 					tabBarIcon: ({ color, focused }) => (
 						<PixelTabIcon
-							type="social"
+							type="social_new"
+							focused={focused}
+							color={color}
+						/>
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="config"
+				options={{
+					title: "Config",
+					tabBarIcon: ({ color, focused }) => (
+						<PixelTabIcon
+							type="config"
 							focused={focused}
 							color={color}
 						/>
@@ -71,3 +97,4 @@ export default function TabLayout() {
 		</Tabs>
 	);
 }
+
