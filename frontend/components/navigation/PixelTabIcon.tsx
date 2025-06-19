@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 
 interface PixelTabIconProps {
-  type: 'trees' | 'focus' | 'social';
+  type: 'trees' | 'focus' | 'social' | 'marketplace';
   focused: boolean;
   color: string;
 }
@@ -11,6 +11,8 @@ export const PixelTabIcon: React.FC<PixelTabIconProps> = ({ type, focused, color
   
   const getImageSource = () => {
     switch (type) {
+      case 'marketplace':
+        return require('../../public/marketplace-icon.png');
       case 'trees':
         return require('../../public/forest.png');
       case 'focus':

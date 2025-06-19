@@ -139,26 +139,10 @@ export default function ConfigScreen() {
 
 	const handleConfirmDisconnect = async () => {
 		try {
-			setIsDisconnecting(true);
-			if (wallet) {
-				await disconnect(wallet);
-				setIsConnected(false);
-				setShowToast(true);
-				setToastMessage('Wallet disconnected successfully');
-				setToastType('success');
-			}
+			await disconnect();
 		} catch (error) {
-			console.error('Error disconnecting wallet:', error);
-			setShowToast(true);
-			setToastMessage('Error disconnecting wallet');
-			setToastType('error');
-		} finally {
-			setIsDisconnecting(false);
+			console.error('Failed to disconnect wallet:', error);
 		}
-	};
-
-	const handleGoToMarketplace = () => {
-		router.push('/(screens)/marketplace');
 	};
 
 	const handleGoToMyNFTs = () => {
@@ -232,23 +216,6 @@ export default function ConfigScreen() {
 						<View style={styles.textContainer}>
 							<ThemedText style={styles.customButtonText}>
 								{isBuyingParcel ? "Buying..." : "Buy parcel"}
-							</ThemedText>
-						</View>
-					</TouchableOpacity>
-
-					{/* Custom Marketplace Button with OK button styling */}
-					<TouchableOpacity
-						style={styles.customButton}
-						onPress={handleGoToMarketplace}
-					>
-						<Image 
-							source={require("@/assets/images/coin.png")}
-							style={styles.buttonImage}
-							resizeMode="contain"
-						/>
-						<View style={styles.textContainer}>
-							<ThemedText style={styles.customButtonText}>
-								Marketplace
 							</ThemedText>
 						</View>
 					</TouchableOpacity>
