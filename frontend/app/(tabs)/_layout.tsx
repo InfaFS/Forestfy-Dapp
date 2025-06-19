@@ -30,12 +30,12 @@ export default function TabLayout() {
 			}}
 		>
 			<Tabs.Screen
-				name="trees"
+				name="marketplace"
 				options={{
-					title: "Forest",
+					title: "Market",
 					tabBarIcon: ({ color, focused }) => (
 						<PixelTabIcon
-							type="trees"
+							type="marketplace"
 							focused={focused}
 							color={color}
 						/>
@@ -43,12 +43,12 @@ export default function TabLayout() {
 				}}
 			/>
 			<Tabs.Screen
-				name="marketplace"
+				name="trees"
 				options={{
-					title: "Market",
+					title: "Forest",
 					tabBarIcon: ({ color, focused }) => (
 						<PixelTabIcon
-							type="marketplace"
+							type="trees"
 							focused={focused}
 							color={color}
 						/>
