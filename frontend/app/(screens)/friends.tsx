@@ -9,13 +9,29 @@ import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
 import { AddFriendAlert } from '@/components/AddFriendAlert';
-import { sendFriendRequest } from '@/constants/api';
+import { RewardAlert } from '@/components/RewardAlert';
+import { ConfirmationAlert } from '@/components/ConfirmationAlert';
+import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
+import { useUserRegistryEvents } from '@/hooks/useUserRegistryEvents';
 
 export default function FriendsScreen() {
   const account = useActiveAccount();
   const [friendsWithNames, setFriendsWithNames] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingNames, setIsLoadingNames] = useState(false);
   const [showAddFriendAlert, setShowAddFriendAlert] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
+  const [friendRequests, setFriendRequests] = useState<Array<{address: string, name: string}>>([]);
+  // Confirmation alerts
+  const [showAcceptConfirm, setShowAcceptConfirm] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<{address: string, name: string} | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<{address: string, name: string} | null>(null);
+  const [selectedCancelRequest, setSelectedCancelRequest] = useState<{address: string, name: string} | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  // Success alert
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -27,6 +43,13 @@ export default function FriendsScreen() {
     contract: UserRegistryContract,
     method: "function getFriends(address) view returns (address[])",
     params: [account?.address || ""],
+  });
+
+  // Obtener todos los usuarios registrados para verificar solicitudes
+  const { data: allUsers } = useReadContract({
+    contract: UserRegistryContract,
+    method: "function getAllUsers() view returns (address[])",
+    params: [],
   });
 
   // Función para obtener el nombre de un amigo por su dirección
@@ -49,6 +72,46 @@ export default function FriendsScreen() {
       console.error("Error getting friend name:", error);
       return `Unknown ${friendAddress.slice(0, 6)}...${friendAddress.slice(-4)}`;
     }
+  };
+
+  // Función para obtener las solicitudes de amistad pendientes
+  const getFriendRequests = async () => {
+    if (!account?.address || !allUsers || allUsers.length === 0) {
+      return [];
+    }
+
+    const requests = [];
+    
+    for (const userAddress of allUsers) {
+      if (userAddress === account.address) continue; // Skip self
+      
+      try {
+        // Verificar si este usuario me envió una solicitud
+        const requestSent = await readContract({
+          contract: UserRegistryContract,
+          method: "function friendRequests(address, address) view returns (bool)",
+          params: [userAddress, account.address],
+        });
+
+        if (requestSent) {
+          // Verificar que no seamos ya amigos
+          const areFriends = await readContract({
+            contract: UserRegistryContract,
+            method: "function areFriends(address, address) view returns (bool)",
+            params: [userAddress, account.address],
+          });
+
+          if (!areFriends) {
+            const name = await getFriendName(userAddress);
+            requests.push({ address: userAddress, name });
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking request from ${userAddress}:`, error);
+      }
+    }
+
+    return requests;
   };
 
   // Efecto para cargar los nombres de los amigos cuando se obtienen las direcciones
@@ -77,30 +140,186 @@ export default function FriendsScreen() {
     loadFriendsNames();
   }, [friendsAddresses]);
 
+  // Efecto para cargar las solicitudes de amistad
+  useEffect(() => {
+    const loadFriendRequests = async () => {
+      if (account?.address && allUsers) {
+        try {
+          const requests = await getFriendRequests();
+          setFriendRequests(requests);
+        } catch (error) {
+          console.error("Error loading friend requests:", error);
+        }
+      }
+    };
+
+    loadFriendRequests();
+  }, [account?.address, allUsers]);
+
   // Escuchar eventos de refresco de datos sociales
   useEffect(() => {
-    const handleRefreshSocialData = () => {
+    const handleRefreshSocialData = async () => {
       refetchFriends();
+      // Also refresh friend requests
+      if (account?.address && allUsers) {
+        const updatedRequests = await getFriendRequests();
+        setFriendRequests(updatedRequests);
+      }
     };
 
     const subscription = DeviceEventEmitter.addListener('refreshSocialData', handleRefreshSocialData);
     return () => subscription.remove();
-  }, [refetchFriends]);
+  }, [refetchFriends, account?.address, allUsers]);
 
-  const handleRemoveFriend = (friendAddress: string) => {
-    // Por ahora no hace nada, como solicitado
-    console.log("Remove friend:", friendAddress);
-  };
+  // Escuchar eventos del contrato UserRegistry para actualizaciones en tiempo real
+  useUserRegistryEvents({
+    onFriendRequestSent: async () => {
+      // Refresh friend requests when a new request is sent
+      if (account?.address && allUsers) {
+        const updatedRequests = await getFriendRequests();
+        setFriendRequests(updatedRequests);
+      }
+    },
+    onFriendRequestAccepted: async () => {
+      // Refresh both friends and requests when a request is accepted
+      refetchFriends();
+      if (account?.address && allUsers) {
+        const updatedRequests = await getFriendRequests();
+        setFriendRequests(updatedRequests);
+      }
+    },
+    onFriendAdded: async () => {
+      // Refresh friends list when a friend is added
+      refetchFriends();
+    },
+    onFriendRequestCancelled: async () => {
+      // Refresh friend requests when a request is cancelled
+      if (account?.address && allUsers) {
+        const updatedRequests = await getFriendRequests();
+        setFriendRequests(updatedRequests);
+      }
+    },
+    onFriendRemoved: async () => {
+      // Refresh friends list when a friend is removed
+      refetchFriends();
+    },
+  });
+
+
 
   const handleAddFriend = () => {
     setShowAddFriendAlert(true);
   };
 
   const handleShowSuccessMessage = (message: string) => {
-    Alert.alert("¡Éxito!", message, [{ text: "OK" }]);
+    setSuccessMessage(message);
+    setShowSuccessAlert(true);
     // Refresh friends data
     refetchFriends();
     DeviceEventEmitter.emit('refreshSocialData');
+  };
+
+  const handleToggleRequests = () => {
+    setShowRequests(!showRequests);
+  };
+
+  const handleAcceptRequest = (fromAddress: string, fromName: string) => {
+    setSelectedRequest({ address: fromAddress, name: fromName });
+    setShowAcceptConfirm(true);
+  };
+
+  const handleConfirmAcceptRequest = async () => {
+    if (!account?.address || !selectedRequest) return;
+
+    setIsProcessing(true);
+    try {
+      await acceptFriendRequest(selectedRequest.address, account.address);
+      
+      // Close confirmation and show success
+      setShowAcceptConfirm(false);
+      setSelectedRequest(null);
+      setSuccessMessage(`You are now friends with ${selectedRequest.name}!`);
+      setShowSuccessAlert(true);
+      
+      // Refresh data
+      refetchFriends();
+      const updatedRequests = await getFriendRequests();
+      setFriendRequests(updatedRequests);
+      DeviceEventEmitter.emit('refreshSocialData');
+      
+    } catch (error: any) {
+      console.error("Error accepting friend request:", error);
+      setShowAcceptConfirm(false);
+      setSelectedRequest(null);
+      Alert.alert("Error", error.message || "Could not accept friend request");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectRequest = (fromAddress: string, fromName: string) => {
+    setSelectedCancelRequest({ address: fromAddress, name: fromName });
+    setShowCancelConfirm(true);
+  };
+
+  const handleConfirmCancelRequest = async () => {
+    if (!account?.address || !selectedCancelRequest) return;
+
+    setIsProcessing(true);
+    try {
+      await cancelFriendRequest(selectedCancelRequest.address, account.address);
+      
+      // Close confirmation and show success
+      setShowCancelConfirm(false);
+      setSelectedCancelRequest(null);
+      setSuccessMessage(`Friend request from ${selectedCancelRequest.name} has been cancelled`);
+      setShowSuccessAlert(true);
+      
+      // Refresh data
+      const updatedRequests = await getFriendRequests();
+      setFriendRequests(updatedRequests);
+      DeviceEventEmitter.emit('refreshSocialData');
+      
+    } catch (error: any) {
+      console.error("Error cancelling friend request:", error);
+      setShowCancelConfirm(false);
+      setSelectedCancelRequest(null);
+      Alert.alert("Error", error.message || "Could not cancel friend request");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveFriend = (friendAddress: string, friendName: string) => {
+    setSelectedFriend({ address: friendAddress, name: friendName });
+    setShowRemoveConfirm(true);
+  };
+
+  const handleConfirmRemoveFriend = async () => {
+    if (!account?.address || !selectedFriend) return;
+
+    setIsProcessing(true);
+    try {
+      await removeFriend(account.address, selectedFriend.address);
+      
+      // Close confirmation and show success
+      setShowRemoveConfirm(false);
+      setSelectedFriend(null);
+      setSuccessMessage(`${selectedFriend.name} has been removed from your friends list`);
+      setShowSuccessAlert(true);
+      
+      // Refresh data
+      refetchFriends();
+      DeviceEventEmitter.emit('refreshSocialData');
+      
+    } catch (error: any) {
+      console.error("Error removing friend:", error);
+      setShowRemoveConfirm(false);
+      setSelectedFriend(null);
+      Alert.alert("Error", error.message || "Could not remove friend");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!fontsLoaded) {
@@ -114,70 +333,132 @@ export default function FriendsScreen() {
         <PixelBackButton />
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="title" style={styles.title}>
-            Friends
+            {showRequests ? 'Friend Requests' : 'Friends'}
           </ThemedText>
+        </ThemedView>
+        
+        {/* Toggle button */}
+        <ThemedView style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={[styles.toggleButton, !showRequests && styles.activeToggle]}
+            onPress={() => setShowRequests(false)}
+          >
+            <ThemedText style={[styles.toggleText, !showRequests && styles.activeToggleText]}>
+              Friends ({friendsWithNames.length})
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, showRequests && styles.activeToggle]}
+            onPress={() => setShowRequests(true)}
+          >
+            <ThemedText style={[styles.toggleText, showRequests && styles.activeToggleText]}>
+              Requests ({friendRequests.length})
+            </ThemedText>
+          </TouchableOpacity>
         </ThemedView>
         
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
         >
-          {isLoadingFriends || isLoadingNames ? (
-            <ThemedView style={styles.loadingContainer}>
-              <ThemedText style={styles.loadingText}>
-                Loading friends...
-              </ThemedText>
-            </ThemedView>
-          ) : friendsWithNames.length === 0 ? (
-            <>
+          {showRequests ? (
+            // Friend Requests View
+            friendRequests.length === 0 ? (
               <ThemedView style={styles.emptyContainer}>
                 <ThemedText style={styles.emptyText}>
-                  No se encontraron amigos
+                  No pending friend requests
                 </ThemedText>
               </ThemedView>
-              <TouchableOpacity
-                style={styles.addFriendButton}
-                onPress={handleAddFriend}
-              >
-                <ThemedText style={styles.addFriendButtonText}>
-                  + Añadir Amigo
-                </ThemedText>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <ThemedView style={styles.friendsContainer}>
-              <ThemedText style={styles.friendsTitle}>
-                AMIGOS ({friendsWithNames.length})
-              </ThemedText>
-              {friendsWithNames.map((friend, index) => (
-                <ThemedView key={friend.address} style={styles.friendItem}>
-                  <ThemedView style={styles.friendInfo}>
-                    <ThemedText style={styles.friendName}>
-                      {friend.name}
-                    </ThemedText>
-                    <ThemedText style={styles.friendAddress}>
-                      {friend.address.slice(0, 6)}...{friend.address.slice(-4)}
-                    </ThemedText>
+            ) : (
+              <ThemedView style={styles.friendsContainer}>
+                {friendRequests.map((request) => (
+                  <ThemedView key={request.address} style={styles.requestItem}>
+                    <ThemedView style={styles.friendInfo}>
+                      <ThemedText style={styles.friendName}>
+                        {request.name}
+                      </ThemedText>
+                      <ThemedText style={styles.friendAddress}>
+                        {request.address.slice(0, 6)}...{request.address.slice(-4)}
+                      </ThemedText>
+                    </ThemedView>
+                    <ThemedView style={styles.requestButtons}>
+                      <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={() => handleAcceptRequest(request.address, request.name)}
+                      >
+                        <ThemedText style={styles.acceptButtonText}>
+                          Accept
+                        </ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.rejectButton}
+                        onPress={() => handleRejectRequest(request.address, request.name)}
+                      >
+                        <ThemedText style={styles.rejectButtonText}>
+                          Cancel
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </ThemedView>
                   </ThemedView>
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => handleRemoveFriend(friend.address)}
-                  >
-                    <ThemedText style={styles.removeButtonText}>
-                      Eliminar
-                    </ThemedText>
-                  </TouchableOpacity>
-                </ThemedView>
-              ))}
-              <TouchableOpacity
-                style={styles.addFriendButton}
-                onPress={handleAddFriend}
-              >
-                <ThemedText style={styles.addFriendButtonText}>
-                  + Añadir Amigo
+                ))}
+              </ThemedView>
+            )
+          ) : (
+            // Friends View
+            isLoadingFriends || isLoadingNames ? (
+              <ThemedView style={styles.loadingContainer}>
+                <ThemedText style={styles.loadingText}>
+                  Loading friends...
                 </ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
+              </ThemedView>
+            ) : friendsWithNames.length === 0 ? (
+              <>
+                <ThemedView style={styles.emptyContainer}>
+                  <ThemedText style={styles.emptyText}>
+                    No friends found
+                  </ThemedText>
+                </ThemedView>
+                <TouchableOpacity
+                  style={styles.addFriendButton}
+                  onPress={handleAddFriend}
+                >
+                  <ThemedText style={styles.addFriendButtonText}>
+                    + Add Friend
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <ThemedView style={styles.friendsContainer}>
+                {friendsWithNames.map((friend, index) => (
+                  <ThemedView key={friend.address} style={styles.friendItem}>
+                    <ThemedView style={styles.friendInfo}>
+                      <ThemedText style={styles.friendName}>
+                        {friend.name}
+                      </ThemedText>
+                      <ThemedText style={styles.friendAddress}>
+                        {friend.address.slice(0, 6)}...{friend.address.slice(-4)}
+                      </ThemedText>
+                    </ThemedView>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => handleRemoveFriend(friend.address, friend.name)}
+                    >
+                      <ThemedText style={styles.removeButtonText}>
+                        Eliminar
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </ThemedView>
+                ))}
+                <TouchableOpacity
+                  style={styles.addFriendButton}
+                  onPress={handleAddFriend}
+                >
+                  <ThemedText style={styles.addFriendButtonText}>
+                    + Add Friend
+                  </ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
+            )
           )}
         </ScrollView>
 
@@ -187,6 +468,67 @@ export default function FriendsScreen() {
           onClose={() => setShowAddFriendAlert(false)}
           onSendFriendRequest={() => {}} // Dummy function, not used anymore
           onSuccess={handleShowSuccessMessage}
+        />
+
+        {/* Accept Friend Request Confirmation */}
+        <ConfirmationAlert
+          show={showAcceptConfirm}
+          onClose={() => {
+            if (!isProcessing) {
+              setShowAcceptConfirm(false);
+              setSelectedRequest(null);
+            }
+          }}
+          onConfirm={handleConfirmAcceptRequest}
+          title="Accept Friend Request"
+          message={selectedRequest ? `Do you want to accept ${selectedRequest.name}'s friend request?` : ''}
+          confirmText="Accept"
+          cancelText="Cancel"
+          confirmColor="#28a745"
+          isLoading={isProcessing}
+        />
+
+        {/* Remove Friend Confirmation */}
+        <ConfirmationAlert
+          show={showRemoveConfirm}
+          onClose={() => {
+            if (!isProcessing) {
+              setShowRemoveConfirm(false);
+              setSelectedFriend(null);
+            }
+          }}
+          onConfirm={handleConfirmRemoveFriend}
+          title="Remove Friend"
+          message={selectedFriend ? `Are you sure you want to remove ${selectedFriend.name} from your friends list?` : ''}
+          confirmText="Remove"
+          cancelText="Cancel"
+          confirmColor="#dc3545"
+          isLoading={isProcessing}
+        />
+
+        {/* Cancel Friend Request Confirmation */}
+        <ConfirmationAlert
+          show={showCancelConfirm}
+          onClose={() => {
+            if (!isProcessing) {
+              setShowCancelConfirm(false);
+              setSelectedCancelRequest(null);
+            }
+          }}
+          onConfirm={handleConfirmCancelRequest}
+          title="Cancel Friend Request"
+          message={selectedCancelRequest ? `Are you sure you want to cancel the friend request from ${selectedCancelRequest.name}?` : ''}
+          confirmText="Cancel Request"
+          cancelText="Keep Request"
+          confirmColor="#dc3545"
+          isLoading={isProcessing}
+        />
+
+        {/* Success Alert */}
+        <RewardAlert
+          show={showSuccessAlert}
+          onClose={() => setShowSuccessAlert(false)}
+          message={successMessage}
         />
       </ThemedView>
     </ProtectedRoute>
@@ -214,6 +556,35 @@ const styles = StyleSheet.create({
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 18,
     textAlign: 'center',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#fef5eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeToggle: {
+    backgroundColor: '#4a7c59',
+  },
+  toggleText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
+    color: '#2d5016',
+    textAlign: 'center',
+  },
+  activeToggleText: {
+    color: 'white',
   },
   scrollView: {
     flex: 1,
@@ -319,6 +690,48 @@ const styles = StyleSheet.create({
   addFriendButtonText: {
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 12,
+    color: 'white',
+    textAlign: 'center',
+  },
+  requestItem: {
+    backgroundColor: '#fef5eb',
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    borderRadius: 0,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  requestButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  acceptButton: {
+    backgroundColor: '#28a745',
+    borderWidth: 2,
+    borderColor: '#1e7e34',
+    borderRadius: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  acceptButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 8,
+    color: 'white',
+    textAlign: 'center',
+  },
+  rejectButton: {
+    backgroundColor: '#dc3545',
+    borderWidth: 2,
+    borderColor: '#a71e2a',
+    borderRadius: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  rejectButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 8,
     color: 'white',
     textAlign: 'center',
   },

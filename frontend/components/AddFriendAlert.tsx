@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet, Image, TextInput } from 'react-native';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
-import { useReadContract, useActiveAccount } from 'thirdweb/react';
+import { useActiveAccount } from 'thirdweb/react';
+import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
 import { sendFriendRequest } from '@/constants/api';
 
@@ -24,35 +25,7 @@ export const AddFriendAlert: React.FC<AddFriendAlertProps> = ({ show, onClose, o
     PressStart2P_400Regular,
   });
 
-  // Get address by username
-  const { data: userAddress, refetch: getUserAddress } = useReadContract({
-    contract: UserRegistryContract,
-    method: "function getAddressByName(string) view returns (address)",
-    params: [username.trim()],
-    queryOptions: {
-      enabled: false, // Only check when manually triggered
-    },
-  });
 
-  // Check if already friends
-  const { data: areFriends, refetch: checkFriendship } = useReadContract({
-    contract: UserRegistryContract,
-    method: "function areFriends(address, address) view returns (bool)",
-    params: [account?.address || "", userAddress || ""],
-    queryOptions: {
-      enabled: false, // Only check when manually triggered
-    },
-  });
-
-  // Check if friend request already sent
-  const { data: requestSent, refetch: checkFriendRequest } = useReadContract({
-    contract: UserRegistryContract,
-    method: "function friendRequests(address, address) view returns (bool)",
-    params: [account?.address || "", userAddress || ""],
-    queryOptions: {
-      enabled: false, // Only check when manually triggered
-    },
-  });
 
   useEffect(() => {
     if (show) {
@@ -100,70 +73,87 @@ export const AddFriendAlert: React.FC<AddFriendAlertProps> = ({ show, onClose, o
     setUserError('');
 
     try {
-      // First, get the user's address by username
-      await getUserAddress();
+      // Get user address by username directly
+      const userAddress = await readContract({
+        contract: UserRegistryContract,
+        method: "function getAddressByName(string) view returns (address)",
+        params: [trimmedUsername],
+      });
+
+      if (!userAddress || userAddress === "0x0000000000000000000000000000000000000000") {
+        setUserError('User not found');
+        setIsChecking(false);
+        return;
+      }
+
+      if (userAddress === account.address) {
+        setUserError('Cannot add yourself as friend');
+        setIsChecking(false);
+        return;
+      }
+
+      // Check if already friends
+      const areFriends = await readContract({
+        contract: UserRegistryContract,
+        method: "function areFriends(address, address) view returns (bool)",
+        params: [account.address, userAddress],
+      });
+
+      if (areFriends) {
+        setUserError('Already friends with this user');
+        setIsChecking(false);
+        return;
+      }
+
+      // Check if they already sent me a request
+      const requestReceived = await readContract({
+        contract: UserRegistryContract,
+        method: "function friendRequests(address, address) view returns (bool)",
+        params: [userAddress, account.address],
+      });
+
+      if (requestReceived) {
+        setUserError('There is already a pending request from this user');
+        setIsChecking(false);
+        return;
+      }
+
+      // Check if I already sent them a request
+      const requestSent = await readContract({
+        contract: UserRegistryContract,
+        method: "function friendRequests(address, address) view returns (bool)",
+        params: [account.address, userAddress],
+      });
+
+      if (requestSent) {
+        setUserError('Friend request already sent');
+        setIsChecking(false);
+        return;
+      }
+
+      // All checks passed, send friend request
+      await sendFriendRequest(account.address, userAddress);
       
-      // Wait a bit for the query to complete
-      setTimeout(async () => {
-        if (!userAddress || userAddress === "0x0000000000000000000000000000000000000000") {
-          setUserError('User not found');
-          setIsChecking(false);
-          return;
-        }
-
-        if (userAddress === account?.address) {
-          setUserError('Cannot add yourself as friend');
-          setIsChecking(false);
-          return;
-        }
-
-        // Check if already friends
-        await checkFriendship();
-        if (areFriends) {
-          setUserError('Already friends with this user');
-          setIsChecking(false);
-          return;
-        }
-
-        // Check if request already sent
-        await checkFriendRequest();
-        if (requestSent) {
-          setUserError('Friend request already sent');
-          setIsChecking(false);
-          return;
-        }
-
-        // All checks passed, send friend request and show success
-        try {
-          await sendFriendRequest(account.address, userAddress);
-          
-          // Show success message
-          if (onSuccess) {
-            onSuccess(`Friend request sent to ${trimmedUsername} successfully!`);
-          }
-          
-          // Close the alert with animation
-          Animated.timing(alertOpacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }).start(() => {
-            setUsername('');
-            setUserError('');
-            setIsChecking(false);
-            onClose();
-          });
-          
-        } catch (error: any) {
-          console.error('Error sending friend request:', error);
-          setUserError(error.message || 'Error sending friend request');
-          setIsChecking(false);
-        }
-      }, 1000);
+      // Show success message
+      if (onSuccess) {
+        onSuccess(`Friend request sent to ${trimmedUsername} successfully!`);
+      }
       
-    } catch (error) {
-      console.error('Error checking user:', error);
-      setUserError('Error checking user');
+      // Close the alert with animation
+      Animated.timing(alertOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setUsername('');
+        setUserError('');
+        setIsChecking(false);
+        onClose();
+      });
+      
+    } catch (error: any) {
+      console.error('Error in handleSendRequest:', error);
+      setUserError(error.message || 'Error processing request');
       setIsChecking(false);
     }
   };
@@ -238,7 +228,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 1000,
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
   },
   alertContent: {
     backgroundColor: '#fef5eb',
@@ -253,8 +243,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 0,
     elevation: 5,
-    maxWidth: '90%',
-    minWidth: 300,
+    maxWidth: '85%',
+    minWidth: 280,
   },
   logo: {
     width: 40,

@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 1000,
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
   },
   alertContent: {
     backgroundColor: '#fef5eb',
@@ -218,8 +218,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 0,
     elevation: 5,
-    maxWidth: '90%',
-    minWidth: 320,
+    maxWidth: '85%',
+    minWidth: 280,
   },
   logo: {
     width: 40,

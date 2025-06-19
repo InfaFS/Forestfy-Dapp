@@ -74,6 +74,16 @@ export const NOTIFICATION_MESSAGES = {
     getMessage: (tokenId: string, price: string) =>
       `Tree #${tokenId} purchased for ${price} FTK`,
   },
+  friendRequestReceived: {
+    title: "New Friend Request!",
+    getMessage: (fromUserName: string) =>
+      `${fromUserName} wants to be your friend`,
+  },
+  friendRequestAccepted: {
+    title: "Friend Request Accepted!",
+    getMessage: (toUserName: string) =>
+      `${toUserName} accepted your friend request`,
+  },
   error: {
     title: "Error",
     message: "Something went wrong",

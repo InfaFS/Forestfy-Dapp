@@ -13,6 +13,9 @@ export const API_ENDPOINTS = {
   registerUser: `${API_BASE_URL}/register-user`,
   changeName: `${API_BASE_URL}/change-name`,
   sendFriendRequest: `${API_BASE_URL}/send-friend-request`,
+  acceptFriendRequest: `${API_BASE_URL}/accept-friend-request`,
+  removeFriend: `${API_BASE_URL}/remove-friend`,
+  cancelFriendRequest: `${API_BASE_URL}/cancel-friend-request`,
 } as const;
 
 export const reclaimReward = async (address: string) => {
@@ -289,6 +292,85 @@ export const sendFriendRequest = async (
       const errorData = await response.json();
       throw new Error(
         errorData.error || "Error al enviar solicitud de amistad"
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const acceptFriendRequest = async (
+  fromAddress: string,
+  toAddress: string
+) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.acceptFriendRequest, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fromAddress, toAddress }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error || "Error al aceptar solicitud de amistad"
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const removeFriend = async (
+  userAddress: string,
+  friendAddress: string
+) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.removeFriend, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userAddress, friendAddress }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error al eliminar amigo");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+
+export const cancelFriendRequest = async (
+  fromAddress: string,
+  toAddress: string
+) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.cancelFriendRequest, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fromAddress, toAddress }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error || "Error al cancelar solicitud de amistad"
       );
     }
 

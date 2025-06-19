@@ -999,6 +999,75 @@ router.post("/remove-friend", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/cancel-friend-request", async (req: Request, res: Response) => {
+  console.log(
+    "📥 Nueva petición de cancelar solicitud de amistad administrativamente recibida"
+  );
+
+  try {
+    const { fromAddress, toAddress } = req.body;
+
+    // Validar parámetros
+    if (!fromAddress) {
+      console.log("❌ Error: fromAddress no proporcionado");
+      res.status(400).json({ error: "From address is required" });
+      return;
+    }
+
+    if (!toAddress) {
+      console.log("❌ Error: toAddress no proporcionado");
+      res.status(400).json({ error: "To address is required" });
+      return;
+    }
+
+    // Validar formato de addresses
+    if (!ethers.isAddress(fromAddress)) {
+      console.log("❌ Error: fromAddress no válido");
+      res.status(400).json({ error: "Invalid from address format" });
+      return;
+    }
+
+    if (!ethers.isAddress(toAddress)) {
+      console.log("❌ Error: toAddress no válido");
+      res.status(400).json({ error: "Invalid to address format" });
+      return;
+    }
+
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`❌ Cancelando solicitud para: ${toAddress}`);
+
+    // Llamar al método cancelFriendRequestAdmin del contrato
+    const tx = await userRegistryContract.cancelFriendRequestAdmin(
+      fromAddress,
+      toAddress
+    );
+    await tx.wait();
+
+    console.log("✅ Solicitud de amistad cancelada exitosamente");
+
+    res.json({
+      success: true,
+      hash: tx.hash,
+      fromAddress: fromAddress,
+      toAddress: toAddress,
+    });
+  } catch (err: any) {
+    console.log("❌ Error:", err.message);
+
+    // Proporcionar mensajes de error más específicos
+    let errorMessage = err.message;
+    if (err.message.includes("Usuario no registrado")) {
+      errorMessage = "User not registered";
+    } else if (
+      err.message.includes("No hay solicitud de este usuario a cancelar")
+    ) {
+      errorMessage = "No friend request to cancel";
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
 app.use(router);
 
 const PORT = process.env.PORT || 3000;

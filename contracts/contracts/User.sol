@@ -73,6 +73,11 @@ contract UserRegistry is Ownable {
         address indexed to,
         uint256 timestamp
     );
+    event FriendRequestCancelled(
+        address indexed from,
+        address indexed to,
+        uint256 timestamp
+    );
 
     // Modificadores
     modifier userExists(address _user) {
@@ -336,6 +341,24 @@ contract UserRegistry is Ownable {
         emit FriendAdded(_from, msg.sender, block.timestamp);
     }
 
+    /**
+     * @dev Cancela una solicitud de amistad enviada
+     * @param _to Dirección del usuario al que se envió la solicitud
+     */
+    function cancelFriendRequest(
+        address _to
+    ) public userExists(msg.sender) userExists(_to) {
+        require(
+            friendRequests[msg.sender][_to],
+            "No hay solicitud enviada a este usuario"
+        );
+
+        // Eliminar la solicitud
+        delete friendRequests[msg.sender][_to];
+
+        emit FriendRequestCancelled(msg.sender, _to, block.timestamp);
+    }
+
     // Métodos administrativos
 
     /**
@@ -366,29 +389,40 @@ contract UserRegistry is Ownable {
     }
 
     /**
-     * @dev Remueve un amigo de la lista del usuario (solo owner)
+     * @dev Remueve un amigo de la lista del usuario (solo owner) - elimina la amistad mutuamente
      * @param _from Dirección del usuario
      * @param _friendAddress Dirección del amigo a remover
      */
     function removeFriendAdmin(
         address _from,
         address _friendAddress
-    ) public onlyOwner userExists(_from) {
+    ) public onlyOwner userExists(_from) userExists(_friendAddress) {
         require(users[_from].isFriend[_friendAddress], "No es tu amigo");
 
-        // Remover de la lista de amigos
-        address[] storage friends = users[_from].friends;
-        for (uint i = 0; i < friends.length; i++) {
-            if (friends[i] == _friendAddress) {
-                friends[i] = friends[friends.length - 1];
-                friends.pop();
+        // Remover de la lista de amigos de _from
+        address[] storage friendsFrom = users[_from].friends;
+        for (uint i = 0; i < friendsFrom.length; i++) {
+            if (friendsFrom[i] == _friendAddress) {
+                friendsFrom[i] = friendsFrom[friendsFrom.length - 1];
+                friendsFrom.pop();
                 break;
             }
         }
-
         users[_from].isFriend[_friendAddress] = false;
 
+        // Remover de la lista de amigos de _friendAddress (mutuo)
+        address[] storage friendsTo = users[_friendAddress].friends;
+        for (uint i = 0; i < friendsTo.length; i++) {
+            if (friendsTo[i] == _from) {
+                friendsTo[i] = friendsTo[friendsTo.length - 1];
+                friendsTo.pop();
+                break;
+            }
+        }
+        users[_friendAddress].isFriend[_from] = false;
+
         emit FriendRemoved(_from, _friendAddress, block.timestamp);
+        emit FriendRemoved(_friendAddress, _from, block.timestamp);
     }
 
     /**
@@ -473,5 +507,25 @@ contract UserRegistry is Ownable {
         emit FriendRequestAccepted(_from, _to, block.timestamp);
         emit FriendAdded(_to, _from, block.timestamp);
         emit FriendAdded(_from, _to, block.timestamp);
+    }
+
+    /**
+     * @dev Cancela una solicitud de amistad (solo owner)
+     * @param _from Dirección del usuario que envió la solicitud
+     * @param _to Dirección del usuario al que se envió la solicitud
+     */
+    function cancelFriendRequestAdmin(
+        address _from,
+        address _to
+    ) public onlyOwner userExists(_from) userExists(_to) {
+        require(
+            friendRequests[_from][_to],
+            "No hay solicitud de este usuario a cancelar"
+        );
+
+        // Eliminar la solicitud
+        delete friendRequests[_from][_to];
+
+        emit FriendRequestCancelled(_from, _to, block.timestamp);
     }
 }

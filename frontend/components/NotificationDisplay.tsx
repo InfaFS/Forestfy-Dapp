@@ -22,32 +22,38 @@ export function NotificationDisplay() {
   return (
     <View style={styles.container}>
       {notifications.map((notification) => {
-        // Determinar si es una notificación de venta NFT (más pequeña)
-        const isNFTSale = notification.type === 'nft_sold' || notification.type === 'nft_bought';
+        // Determinar si es una notificación de venta NFT o amigos (más pequeña)
+        const isSmallNotification = 
+          notification.type === 'nft_sold' || 
+          notification.type === 'nft_bought' ||
+          notification.type === 'friend_request_received' ||
+          notification.type === 'friend_request_accepted';
         
         return (
           <Animated.View
             key={notification.id}
             style={[
-              isNFTSale ? styles.smallNotification : styles.notification,
+              isSmallNotification ? styles.smallNotification : styles.notification,
               notification.type === 'nft_sold' && styles.successNotification,
               notification.type === 'nft_bought' && styles.successNotification,
               notification.type === 'nft_listed' && styles.infoNotification,
               notification.type === 'nft_unlisted' && styles.infoNotification,
+              notification.type === 'friend_request_received' && styles.friendNotification,
+              notification.type === 'friend_request_accepted' && styles.successNotification,
             ]}
           >
             <View style={styles.content}>
               <Image 
                 source={require("@/assets/images/logo.png")}
-                style={isNFTSale ? styles.smallLogo : styles.logo}
+                style={isSmallNotification ? styles.smallLogo : styles.logo}
                 resizeMode="contain"
               />
               <View style={styles.textContainer}>
-                <Text style={isNFTSale ? styles.smallTitle : styles.title}>
+                <Text style={isSmallNotification ? styles.smallTitle : styles.title}>
                   {notification.title}
                 </Text>
                 {notification.message && (
-                  <Text style={isNFTSale ? styles.smallMessage : styles.message}>
+                  <Text style={isSmallNotification ? styles.smallMessage : styles.message}>
                     {notification.message}
                   </Text>
                 )}
@@ -59,7 +65,9 @@ export function NotificationDisplay() {
               onPress={() => handleDismiss(notification.id)}
             >
               <Text style={styles.dismissText}>
-                {notification.type === 'nft_sold' ? "Aceptar" : "Dismiss"}
+                {notification.type === 'nft_sold' ? "Aceptar" : 
+                 notification.type === 'friend_request_received' || 
+                 notification.type === 'friend_request_accepted' ? "Accept" : "Dismiss"}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -126,6 +134,10 @@ const styles = StyleSheet.create({
   infoNotification: {
     backgroundColor: NOTIFICATION_STYLES.info.backgroundColor,
     borderColor: NOTIFICATION_STYLES.info.borderColor,
+  },
+  friendNotification: {
+    backgroundColor: NOTIFICATION_STYLES.success.backgroundColor,
+    borderColor: '#4a7c59',
   },
   logo: {
     width: NOTIFICATION_STYLES.logo.width,
