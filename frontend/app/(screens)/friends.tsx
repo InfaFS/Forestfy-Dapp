@@ -13,8 +13,10 @@ import { RewardAlert } from '@/components/RewardAlert';
 import { ConfirmationAlert } from '@/components/ConfirmationAlert';
 import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
 import { useUserRegistryEvents } from '@/hooks/useUserRegistryEvents';
+import { useRouter } from "expo-router";
 
 export default function FriendsScreen() {
+  const router = useRouter();
   const account = useActiveAccount();
   const [friendsWithNames, setFriendsWithNames] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingNames, setIsLoadingNames] = useState(false);
@@ -231,8 +233,6 @@ export default function FriendsScreen() {
     },
   });
 
-
-
   const handleAddFriend = () => {
     setShowAddFriendAlert(true);
   };
@@ -346,6 +346,17 @@ export default function FriendsScreen() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Función para navegar al forest de un amigo
+  const handleViewFriendForest = (friendAddress: string, friendName: string) => {
+    router.push({
+      pathname: "/(screens)/friend-forest",
+      params: {
+        friendAddress: friendAddress,
+        friendName: friendName,
+      },
+    });
   };
 
   if (!fontsLoaded) {
@@ -462,7 +473,12 @@ export default function FriendsScreen() {
             ) : (
               <ThemedView style={styles.friendsContainer}>
                 {friendsWithNames.map((friend, index) => (
-                  <ThemedView key={friend.address} style={styles.friendItem}>
+                  <TouchableOpacity 
+                    key={friend.address} 
+                    style={styles.friendItem}
+                    onPress={() => handleViewFriendForest(friend.address, friend.name)}
+                    activeOpacity={0.7}
+                  >
                     <ThemedView style={styles.friendInfo}>
                       <ThemedText style={styles.friendName}>
                         {friend.name}
@@ -471,15 +487,31 @@ export default function FriendsScreen() {
                         {friend.address.slice(0, 6)}...{friend.address.slice(-4)}
                       </ThemedText>
                     </ThemedView>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => handleRemoveFriend(friend.address, friend.name)}
-                    >
-                      <ThemedText style={styles.removeButtonText}>
-                        Eliminar
-                      </ThemedText>
-                    </TouchableOpacity>
-                  </ThemedView>
+                    <ThemedView style={styles.friendActions}>
+                      <TouchableOpacity
+                        style={styles.viewForestButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleViewFriendForest(friend.address, friend.name);
+                        }}
+                      >
+                        <ThemedText style={styles.viewForestButtonText}>
+                          Forest View
+                        </ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFriend(friend.address, friend.name);
+                        }}
+                      >
+                        <ThemedText style={styles.removeButtonText}>
+                          Delete
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </ThemedView>
+                  </TouchableOpacity>
                 ))}
                 <TouchableOpacity
                   style={styles.addFriendButton}
@@ -762,6 +794,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   rejectButtonText: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 8,
+    color: 'white',
+    textAlign: 'center',
+  },
+  friendActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  viewForestButton: {
+    backgroundColor: '#4a7c59',
+    borderWidth: 2,
+    borderColor: '#2d5016',
+    borderRadius: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  viewForestButtonText: {
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 8,
     color: 'white',

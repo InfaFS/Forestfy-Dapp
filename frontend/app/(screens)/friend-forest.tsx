@@ -2,15 +2,13 @@ import React from "react";
 import { StyleSheet, View, Image, TouchableOpacity, Animated, Alert } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { ThemedButton } from "@/components/ThemedButton";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { useRouter, useFocusEffect } from "expo-router";
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useActiveAccount, useReadContract } from "thirdweb/react";
-import { NFTContract, TokenContract } from "@/constants/thirdweb";
-import { claimFirstParcel, buyParcel } from "@/constants/api";
-import { useTrees } from "@/contexts/TreesContext";
-import { ParcelAlert } from "@/components/ParcelAlert";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useEffect, useState, useRef } from "react";
+import { useReadContract } from "thirdweb/react";
+import { NFTContract } from "@/constants/thirdweb";
+import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
+import { Ionicons } from "@expo/vector-icons";
 
 const PARCEL_IMAGES = {
 	0: require("@/assets/images/parcela.png"),
@@ -32,55 +30,48 @@ const PARCEL_IMAGES = {
 	16: require("@/assets/images/parcela_16.png"),
 };
 
-export default function TreesScreen() {
+export default function FriendForestScreen() {
 	const router = useRouter();
+	const { friendAddress, friendName } = useLocalSearchParams<{
+		friendAddress: string;
+		friendName: string;
+	}>();
+	
 	const [nftCount, setNftCount] = useState(0);
 	const [userParcels, setUserParcels] = useState(0);
-	const [isClaimingParcel, setIsClaimingParcel] = useState(false);
-	const [isBuyingParcel, setIsBuyingParcel] = useState(false);
 	const [currentParcel, setCurrentParcel] = useState(1);
-	const [tokenBalance, setTokenBalance] = useState<string>("0");
-	const [showParcelAlert, setShowParcelAlert] = useState(false);
-	const [parcelAlertMessage, setParcelAlertMessage] = useState("");
-	const account = useActiveAccount();
 	const floatAnim = useRef(new Animated.Value(0)).current;
-	const { refreshTrigger, triggerRefresh } = useTrees();
 
-	const { data, refetch: refetchNFTs } = useReadContract({
+	// Cargar fuentes pixel
+	const [fontsLoaded] = useFonts({
+		PressStart2P_400Regular,
+	});
+
+	const { data: nftData } = useReadContract({
 		contract: NFTContract,
 		method: "function tokensOfOwner(address owner) view returns (uint256[] memory)",
-		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		params: [friendAddress || "0x0000000000000000000000000000000000000000"],
 		queryOptions: {
-			enabled: !!account?.address,
+			enabled: !!friendAddress,
 		},
 	});
 
-	// Leer la cantidad de parcelas del usuario
-	const { data: parcelData, isPending: isLoadingParcels, refetch: refetchParcels } = useReadContract({
+	// Leer la cantidad de parcelas del amigo
+	const { data: parcelData, isPending: isLoadingParcels } = useReadContract({
 		contract: NFTContract,
 		method: "function getUserParcels(address user) view returns (uint256)",
-		params: [account?.address || "0x0000000000000000000000000000000000000000"],
+		params: [friendAddress || "0x0000000000000000000000000000000000000000"],
 		queryOptions: {
-			enabled: !!account?.address,
-		},
-	});
-
-	// Leer el balance de tokens
-	const { data: balanceData } = useReadContract({
-		contract: TokenContract,
-		method: "function virtualBalance(address) view returns (uint256)",
-		params: [account?.address || "0x0000000000000000000000000000000000000000"],
-		queryOptions: {
-			enabled: !!account?.address,
+			enabled: !!friendAddress,
 		},
 	});
 
 	useEffect(() => {
-		if (data) {
-			const count = (data as bigint[]).length;
+		if (nftData) {
+			const count = (nftData as bigint[]).length;
 			setNftCount(count);
 		}
-	}, [data]);
+	}, [nftData]);
 
 	useEffect(() => {
 		if (parcelData !== undefined) {
@@ -88,32 +79,6 @@ export default function TreesScreen() {
 			setUserParcels(parcels);
 		}
 	}, [parcelData]);
-
-	useEffect(() => {
-		if (balanceData !== undefined) {
-			const balance = Number(balanceData) / 1e18;
-			setTokenBalance(balance.toFixed(2));
-		}
-	}, [balanceData]);
-
-	// Add effect to refetch when refreshTrigger changes
-	useEffect(() => {
-		refetchNFTs();
-		refetchParcels();
-	}, [refreshTrigger, refetchNFTs, refetchParcels]);
-
-	// Add focus effect to refetch when tab becomes active (only if no recent refresh)
-	useFocusEffect(
-		useCallback(() => {
-			// Only refresh if it's been more than 2 seconds since last refresh trigger
-			const now = Date.now();
-			const lastRefreshTime = refreshTrigger * 1000; // Approximate time
-			if (now - lastRefreshTime > 2000) {
-				refetchNFTs();
-				refetchParcels();
-			}
-		}, [refreshTrigger, refetchNFTs, refetchParcels])
-	);
 
 	useEffect(() => {
 		const floatingAnimation = Animated.loop(
@@ -170,66 +135,45 @@ export default function TreesScreen() {
 		outputRange: [0, -10],
 	});
 
-	const handleClaimFirstParcel = async () => {
-		if (!account?.address) {
-			Alert.alert("Error", "Please connect your wallet first");
-			return;
-		}
-
-		setIsClaimingParcel(true);
-		try {
-			await claimFirstParcel(account.address);
-			// Refrescar los datos del contrato para mostrar la nueva parcela
-			triggerRefresh();
-			
-			setParcelAlertMessage("Parcel claimed successfully!");
-			setShowParcelAlert(true);
-		} catch (error) {
-			console.error("Error claiming first parcel:", error);
-			Alert.alert("Error", "Could not get the parcel. Please try again.");
-		} finally {
-			setIsClaimingParcel(false);
+	const handleViewNFTs = () => {
+		const treesInParcel = getTreesInParcel(currentParcel);
+		if (treesInParcel > 0) {
+			// Navegar a una vista de NFTs específica para el amigo
+			router.push({
+				pathname: "/(screens)/friend-nfts",
+				params: { 
+					friendAddress: friendAddress,
+					friendName: friendName,
+					parcel: currentParcel.toString(),
+					startIndex: ((currentParcel - 1) * 16).toString(),
+					endIndex: (currentParcel * 16).toString()
+				}
+			});
 		}
 	};
 
-	const handleBuyParcel = async () => {
-		if (!account?.address) {
-			Alert.alert("Error", "Please connect your wallet first");
-			return;
-		}
-
-		if (Number(tokenBalance) < 5) {
-			Alert.alert("Error", "You need 5 tokens to buy a parcel");
-			return;
-		}
-
-		setIsBuyingParcel(true);
-		try {
-			await buyParcel(account.address);
-			// Refrescar los datos del contrato para mostrar la nueva parcela
-			triggerRefresh();
-			
-			setParcelAlertMessage("You bought a new parcel!");
-			setShowParcelAlert(true);
-		} catch (error) {
-			console.error("Error buying parcel:", error);
-			Alert.alert("Error", "Could not buy the parcel. Please try again.");
-		} finally {
-			setIsBuyingParcel(false);
-		}
-	};
+	if (!fontsLoaded) {
+		return null;
+	}
 
 	return (
 		<ProtectedRoute>
 			<ThemedView style={styles.container}>
-				<ThemedView style={styles.titleContainer}>
-					<ThemedText type="title" style={{fontFamily: 'PressStart2P_400Regular', fontSize: 18, textAlign: 'center'}}>
-						Forest
+				<ThemedView style={styles.header}>
+					<TouchableOpacity 
+						style={styles.backButton}
+						onPress={() => router.back()}
+					>
+						<ThemedText style={styles.backButtonText}>←</ThemedText>
+					</TouchableOpacity>
+					<ThemedText style={styles.title}>
+						{friendName}'s Forest
 					</ThemedText>
 				</ThemedView>
+
 				<ThemedView style={styles.contentContainer}>
 					<ThemedText type="subtitle" style={{fontFamily: 'PressStart2P_400Regular', fontSize: 12, textAlign: 'center', marginTop: 10}}>
-						Your virtual forest
+						{friendName}'s virtual forest
 					</ThemedText>
 					
 					{/* Información de parcelas */}
@@ -245,22 +189,8 @@ export default function TreesScreen() {
 								resizeMode="contain"
 							/>
 							<ThemedText style={[styles.noParcelsText, { fontFamily: 'PressStart2P_400Regular' }]}>
-								You don't have parcels :(
+								{friendName} doesn't have parcels yet :(
 							</ThemedText>
-							<TouchableOpacity
-								style={[
-									styles.customButton,
-									{ opacity: isClaimingParcel ? 0.5 : 1 }
-								]}
-								onPress={handleClaimFirstParcel}
-								disabled={isClaimingParcel}
-							>
-								<View style={styles.textContainer}>
-									<ThemedText style={styles.customButtonText}>
-										{isClaimingParcel ? "Getting..." : "Claim a parcel for free!"}
-									</ThemedText>
-								</View>
-							</TouchableOpacity>
 						</View>
 					) : (
 						<>
@@ -278,20 +208,7 @@ export default function TreesScreen() {
 							{/* Siempre mostrar la imagen de la parcela cuando hay parcelas */}
 							<TouchableOpacity 
 								style={styles.imageContainer}
-								onPress={() => {
-									const treesInParcel = getTreesInParcel(currentParcel);
-									if (treesInParcel > 0) {
-										// Navegar con información de la parcela actual
-										router.navigate({
-											pathname: "/(screens)/user-nfts",
-											params: { 
-												parcel: currentParcel.toString(),
-												startIndex: ((currentParcel - 1) * 16).toString(),
-												endIndex: (currentParcel * 16).toString()
-											}
-										});
-									}
-								}}
+								onPress={handleViewNFTs}
 								activeOpacity={getTreesInParcel(currentParcel) > 0 ? 0.7 : 1}
 							>
 								<Animated.Image 
@@ -327,24 +244,12 @@ export default function TreesScreen() {
 							{/* Mostrar texto adicional si no hay árboles en la parcela actual */}
 							{getTreesInParcel(currentParcel) === 0 && (
 								<ThemedText type="subtext" style={styles.emptyText}>
-									{userParcels > 1 ? `Parcel ${currentParcel} is ready to plant trees` : "Your parcel is ready to plant trees"}
+									{userParcels > 1 ? `Parcel ${currentParcel} is empty` : `${friendName}'s parcel is empty`}
 								</ThemedText>
 							)}
-							
-
 						</>
 					)}
 				</ThemedView>
-				
-			{/* Parcel Alert */}
-				<ParcelAlert
-					show={showParcelAlert}
-					message={parcelAlertMessage}
-				onClose={() => {
-					setShowParcelAlert(false);
-					setParcelAlertMessage("");
-				}}
-				/>
 			</ThemedView>
 		</ProtectedRoute>
 	);
@@ -353,16 +258,40 @@ export default function TreesScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		paddingTop: 60,
+		backgroundColor: '#fef5eb',
 	},
-	titleContainer: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
 		paddingHorizontal: 20,
-		justifyContent: 'center',
-		marginTop: 40,
-		marginBottom: 20,
+		paddingTop: 60,
+		paddingBottom: 20,
+		borderBottomWidth: 2,
+		borderBottomColor: '#2d5016',
+		backgroundColor: '#fef5eb',
+	},
+	backButton: {
+		marginRight: 16,
+		padding: 8,
+		backgroundColor: '#4a7c59',
+		borderWidth: 2,
+		borderColor: '#2d5016',
+		borderRadius: 0,
+		minWidth: 40,
+		alignItems: 'center',
+	},
+	backButtonText: {
+		fontFamily: 'PressStart2P_400Regular',
+		fontSize: 16,
+		color: '#fff',
+	},
+	title: {
+		fontFamily: 'PressStart2P_400Regular',
+		fontSize: 16,
+		color: '#2d5016',
+		flex: 1,
+		textAlign: 'center',
+		marginRight: 56, // Para centrar el texto
 	},
 	contentContainer: {
 		padding: 20,
@@ -380,12 +309,6 @@ const styles = StyleSheet.create({
 	image: {
 		width: "80%",
 		height: "80%",
-	},
-	emptyState: {
-		flex: 1,
-		alignItems: 'center',
-		justifyContent: 'center',
-		paddingVertical: 40,
 	},
 	emptyText: {
 		textAlign: 'center',
@@ -414,35 +337,23 @@ const styles = StyleSheet.create({
 	},
 	parcelInfo: {
 		textAlign: 'center',
-		color: '#2E7D32',
+		color: '#4CAF50',
 		fontSize: 14,
 		fontWeight: 'bold',
-		backgroundColor: 'rgba(46, 125, 50, 0.15)',
+		backgroundColor: 'rgba(76, 175, 80, 0.1)',
 		padding: 10,
 		borderRadius: 8,
 		marginVertical: 10,
 	},
-	claimButton: {
-		marginTop: 20,
-		backgroundColor: '#4CAF50',
-		borderRadius: 0,
-		borderWidth: 2,
-		borderColor: '#2E7D32',
-	},
 	currentParcelInfo: {
 		textAlign: 'center',
-		color: '#1B5E20',
+		color: '#2E7D32',
 		fontSize: 12,
 		fontWeight: 'bold',
-		backgroundColor: 'rgba(27, 94, 32, 0.15)',
+		backgroundColor: 'rgba(46, 125, 50, 0.1)',
 		padding: 8,
 		borderRadius: 6,
 		marginVertical: 5,
-	},
-	parcelNavButton: {
-		marginTop: 15,
-		borderRadius: 0,
-		borderWidth: 2,
 	},
 	parcelNavContainer: {
 		flexDirection: 'row',
@@ -470,38 +381,19 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#2d5016',
 	},
-	// Custom button styles matching the consistent project style
-	customButton: {
+	viewNFTsButton: {
+		marginTop: 20,
 		backgroundColor: '#4a7c59',
-		borderRadius: 10,
-		paddingVertical: 20,
-		paddingHorizontal: 30,
 		borderWidth: 2,
 		borderColor: '#2d5016',
-		minWidth: 280,
-		alignItems: 'center',
-		flexDirection: 'row',
-		position: 'relative',
-		marginTop: 20,
+		borderRadius: 0,
+		paddingVertical: 12,
+		paddingHorizontal: 20,
 	},
-	textContainer: {
-		position: 'absolute',
-		left: 0,
-		right: 0,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	customButtonText: {
+	viewNFTsButtonText: {
 		fontFamily: 'PressStart2P_400Regular',
-		fontSize: 12,
-		color: 'white',
+		fontSize: 10,
+		color: '#fff',
 		textAlign: 'center',
 	},
-	buttonImage: {
-		width: 50,
-		height: 50,
-		position: 'absolute',
-		left: 30,
-	},
-
 }); 
