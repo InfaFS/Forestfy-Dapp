@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, StatusBar, ScrollView, RefreshControl, Image } from 'react-native';
+import { StyleSheet, StatusBar, ScrollView, RefreshControl, Image, DeviceEventEmitter } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -11,6 +11,7 @@ import { MarketplaceContract, TokenContract } from '@/constants/thirdweb';
 import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
 import { EventToast } from '@/components/common/EventToast';
 import { useActiveAccount, useReadContract } from 'thirdweb/react';
+import { readContract } from "thirdweb";
 import { ConfigIcon } from '@/components/common/ConfigIcon';
 
 export default function MarketplaceTab() {
@@ -24,47 +25,82 @@ export default function MarketplaceTab() {
   // Hook para obtener listings activos (ya incluye eventos en tiempo real)
   const { activeListingIds, loadingIds, refetchIds } = useActiveListings();
 
-  // Leer el balance de tokens
-  const { data: balanceData, refetch: refetchBalance } = useReadContract({
-    contract: TokenContract,
-    method: "function virtualBalance(address) view returns (uint256)",
-    params: [account?.address || "0x0000000000000000000000000000000000000000"],
-    queryOptions: {
-      enabled: !!account?.address,
-    },
-  });
-
-  // Función para refrescar el balance
-  const refreshBalance = useCallback(async () => {
-    try {
-      await refetchBalance();
-    } catch (error) {
-      console.error("Error refreshing balance:", error);
+  // Función para obtener balance usando readContract directamente
+  const fetchBalance = useCallback(async () => {
+    if (account?.address) {
+      try {
+        const data = await readContract({
+          contract: TokenContract,
+          method: "function virtualBalance(address) view returns (uint256)",
+          params: [account.address],
+        });
+        // Convertir el balance de wei a tokens (asumiendo 18 decimales)
+        const balance = Number(data) / 1e18;
+        setTokenBalance(balance.toFixed(2));
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+      }
     }
-  }, [refetchBalance]);
+  }, [account?.address]);
 
+  // Función para actualizar el balance usando DeviceEventEmitter con reintentos
+  const updateBalance = useCallback(() => {
+    console.log('🔄 Actualizando balance en Marketplace...');
+    // Actualización inmediata
+    DeviceEventEmitter.emit('refreshWalletData');
+    
+    // Reintento después de 1 segundo
+    setTimeout(() => {
+      console.log('🔄 Reintento 1 - Actualizando balance...');
+      DeviceEventEmitter.emit('refreshWalletData');
+    }, 1000);
+    
+    // Reintento después de 3 segundos
+    setTimeout(() => {
+      console.log('🔄 Reintento 2 - Actualizando balance...');
+      DeviceEventEmitter.emit('refreshWalletData');
+    }, 3000);
+    
+    // Actualización local también
+    setTimeout(() => {
+      fetchBalance();
+    }, 1500);
+  }, [fetchBalance]);
+
+  // Actualizar balance automáticamente
   useEffect(() => {
-    if (balanceData !== undefined) {
-      const balance = Number(balanceData) / 1e18;
-      setTokenBalance(balance.toFixed(2));
-    }
-  }, [balanceData]);
+    fetchBalance();
+    // Actualizar el balance cada 60 segundos
+    const interval = setInterval(fetchBalance, 60000);
+    return () => clearInterval(interval);
+  }, [fetchBalance]);
+
+  // Escuchar eventos de actualización de balance
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener('refreshWalletData', fetchBalance);
+    return () => {
+      listener.remove();
+    };
+  }, [fetchBalance]);
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
     PressStart2P_400Regular,
   });
 
-  // Hook para escuchar eventos (solo para refrescar datos, sin notificaciones)
+  // Hook para escuchar eventos (actualizar balance cuando hay transacciones)
   useMarketplaceEvents({
     onNFTListed: () => {
-      // Sin notificación, solo refresh automático via useActiveListings
+      // Actualizar balance al listar NFT
+      setTimeout(() => fetchBalance(), 2000);
     },
     onNFTUnlisted: () => {
-      // Sin notificación, solo refresh automático via useActiveListings
+      // Actualizar balance al deslistar NFT
+      setTimeout(() => fetchBalance(), 2000);
     },
     onNFTSold: () => {
-      // Sin notificación, solo refresh automático via useActiveListings
+      // Actualizar balance al vender NFT
+      setTimeout(() => fetchBalance(), 2000);
     },
   });
 
@@ -72,6 +108,8 @@ export default function MarketplaceTab() {
     setIsRefreshing(true);
     try {
       await refetchIds();
+      // También actualizar el balance
+      await fetchBalance();
     } catch (error) {
       console.error('Error refreshing marketplace:', error);
     } finally {
