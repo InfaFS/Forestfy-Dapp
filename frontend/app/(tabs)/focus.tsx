@@ -19,6 +19,7 @@ import { RewardAlert } from "@/components/RewardAlert";
 import { ConfirmTreeAlert } from "@/components/ConfirmTreeAlert";
 import { ConfirmRewardAlert } from "@/components/ConfirmRewardAlert";
 import { DeviceEventEmitter } from 'react-native';
+import { ConfigIcon } from '@/components/common/ConfigIcon';
 
 // Componente TimeSlider personalizado
 const TimeSlider: React.FC<{

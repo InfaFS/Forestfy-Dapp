@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Image, TouchableOpacity, Animated, Alert } from "react-native";
+import { StyleSheet, View, Image, TouchableOpacity, Animated, Alert, StatusBar } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedButton } from "@/components/ThemedButton";
@@ -222,7 +222,9 @@ export default function TreesScreen() {
 	return (
 		<ProtectedRoute>
 			<ThemedView style={styles.container}>
-				<ThemedView style={styles.titleContainer}>
+				<StatusBar barStyle="dark-content" backgroundColor="#fef5eb" />
+				{/* Header centrado */}
+				<ThemedView style={styles.header}>
 					<ThemedText type="title" style={{fontFamily: 'PressStart2P_400Regular', fontSize: 18, textAlign: 'center'}}>
 						Forest
 					</ThemedText>
@@ -467,5 +469,12 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontFamily: 'PressStart2P_400Regular',
 	},
-
+	header: {
+		paddingHorizontal: 20,
+		paddingVertical: 10,
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginTop: 40,
+		marginBottom: 20,
+	},
 }); 

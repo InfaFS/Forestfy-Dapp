@@ -11,6 +11,7 @@ import { MarketplaceContract, TokenContract } from '@/constants/thirdweb';
 import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
 import { EventToast } from '@/components/common/EventToast';
 import { useActiveAccount, useReadContract } from 'thirdweb/react';
+import { ConfigIcon } from '@/components/common/ConfigIcon';
 
 export default function MarketplaceTab() {
   const account = useActiveAccount();

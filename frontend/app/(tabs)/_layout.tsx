@@ -81,6 +81,19 @@ export default function TabLayout() {
 					),
 				}}
 			/>
+			<Tabs.Screen
+				name="settings"
+				options={{
+					title: "Config",
+					tabBarIcon: ({ color, focused }) => (
+						<PixelTabIcon
+							type="config"
+							focused={focused}
+							color={color}
+						/>
+					),
+				}}
+			/>
 		</Tabs>
 	);
 }
