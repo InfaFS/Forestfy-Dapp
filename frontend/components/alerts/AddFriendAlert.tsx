@@ -330,9 +330,8 @@ export const useAddFriend = () => {
       await alert.showInfoAlert({
         title: "Wallet Required",
         message: "Please connect your wallet to add friends",
-        variant: "error",
-        icon: "error",
-        theme: "friends"
+        variant: "destructive",
+        icon: "error"
       });
       return null;
     }
@@ -344,7 +343,6 @@ export const useAddFriend = () => {
       maxLength: 50,
       submitText: "Send Request",
       cancelText: "Cancel",
-      theme: "friends",
       validation: (value) => {
         const trimmedUsername = value.trim();
         
@@ -372,9 +370,8 @@ export const useAddFriend = () => {
         await alert.showInfoAlert({
           title: "User Not Found",
           message: "User not found",
-          variant: "error",
-          icon: "error",
-          theme: "friends"
+          variant: "destructive",
+          icon: "error"
         });
         return null;
       }
@@ -383,9 +380,8 @@ export const useAddFriend = () => {
         await alert.showInfoAlert({
           title: "Invalid User",
           message: "Cannot add yourself as friend",
-          variant: "error",
-          icon: "error",
-          theme: "friends"
+          variant: "destructive",
+          icon: "error"
         });
         return null;
       }
@@ -401,9 +397,7 @@ export const useAddFriend = () => {
         await alert.showInfoAlert({
           title: "Already Friends",
           message: "Already friends with this user",
-          variant: "warning",
-          icon: "info",
-          theme: "friends"
+          icon: "info"
         });
         return null;
       }
@@ -419,9 +413,7 @@ export const useAddFriend = () => {
         await alert.showInfoAlert({
           title: "Pending Request",
           message: "There is already a pending request from this user",
-          variant: "warning",
-          icon: "info",
-          theme: "friends"
+          icon: "info"
         });
         return null;
       }
@@ -437,34 +429,55 @@ export const useAddFriend = () => {
         await alert.showInfoAlert({
           title: "Request Already Sent",
           message: "Friend request already sent",
-          variant: "warning",
-          icon: "info",
-          theme: "friends"
+          icon: "info"
         });
         return null;
       }
 
-      // Send friend request
-      await sendFriendRequest(account.address, userAddress);
-      
-      // Show success message
-      await alert.showInfoAlert({
-        title: "Friend Request Sent",
-        message: `Friend request sent to ${username} successfully!`,
-        variant: "success",
-        icon: "success",
-        theme: "friends"
+      // Show loading alert while sending request
+      const loadingId = alert.showLoadingAlert({
+        title: "Sending Request",
+        message: "Sending friend request...",
+        allowCancel: false
       });
 
-      return username;
+      try {
+        // Send friend request and wait for API response
+        const response = await sendFriendRequest(account.address, userAddress);
+        
+        // Hide loading alert
+        alert.hideAlert(loadingId);
+        
+        // Show success message only if API call succeeded
+        await alert.showInfoAlert({
+          title: "Friend Request Sent",
+          message: `Friend request sent to ${username} successfully!`,
+          icon: "success"
+        });
+
+        return username;
+      } catch (apiError: any) {
+        // Hide loading alert
+        alert.hideAlert(loadingId);
+        
+        // Show specific API error
+        await alert.showInfoAlert({
+          title: "Request Failed",
+          message: apiError.message || "Failed to send friend request. Please try again.",
+          variant: "destructive",
+          icon: "error"
+        });
+        
+        return null;
+      }
     } catch (error: any) {
-      console.error('Error sending friend request:', error);
+      // This catches errors from blockchain calls (readContract), not API calls
+      console.error('Error validating user or checking friendship status:', error);
       await alert.showInfoAlert({
-        title: "Error",
-        message: error.message || "Error sending friend request",
-        variant: "error",
-        icon: "error",
-        theme: "friends"
+        title: "Validation Error",
+        message: "Error validating user information. Please try again.",
+        variant: "destructive",
+        icon: "error"
       });
       return null;
     }

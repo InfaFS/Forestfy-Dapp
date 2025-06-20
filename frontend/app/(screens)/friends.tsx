@@ -7,7 +7,7 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
-import { AddFriendAlert } from '@/components/alerts';
+
 import { useAlert } from '@/hooks/useAlert';
 import { AlertRenderer } from '@/components/alerts/AlertRenderer';
 import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
@@ -19,7 +19,6 @@ export default function FriendsScreen() {
   const account = useActiveAccount();
   const [friendsWithNames, setFriendsWithNames] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingNames, setIsLoadingNames] = useState(false);
-  const [showAddFriendAlert, setShowAddFriendAlert] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
@@ -223,8 +222,165 @@ export default function FriendsScreen() {
     },
   });
 
-  const handleAddFriend = () => {
-    setShowAddFriendAlert(true);
+  const handleAddFriend = async () => {
+    if (!account?.address) {
+      await alert.showInfoAlert({
+        title: "Wallet Required",
+        message: "Please connect your wallet to add friends",
+        variant: "destructive",
+        icon: "error"
+      });
+      return;
+    }
+
+    try {
+      const username = await alert.showInputAlert({
+        title: "Add Friend",
+        message: "Enter the username to add as friend",
+        placeholder: "Username",
+        maxLength: 50,
+        submitText: "Send Request",
+        cancelText: "Cancel",
+        validation: (value) => {
+          const trimmedUsername = value.trim();
+          if (!trimmedUsername) {
+            return "Please enter a username";
+          }
+          return null;
+        }
+      });
+
+      if (!username) {
+        return; // User cancelled
+      }
+
+      // Show loading alert while processing
+      const loadingId = alert.showLoadingAlert({
+        title: "Processing Request",
+        message: "Validating user and sending request...",
+        allowCancel: false
+      });
+
+      try {
+        // Get user address and validate
+        const userAddress = await readContract({
+          contract: UserRegistryContract,
+          method: "function getAddressByName(string) view returns (address)",
+          params: [username],
+        });
+
+        if (!userAddress || userAddress === "0x0000000000000000000000000000000000000000") {
+          alert.hideAlert(loadingId);
+          await alert.showInfoAlert({
+            title: "User Not Found",
+            message: "User not found",
+            variant: "destructive",
+            icon: "error"
+          });
+          return;
+        }
+
+        if (userAddress === account.address) {
+          alert.hideAlert(loadingId);
+          await alert.showInfoAlert({
+            title: "Invalid User",
+            message: "Cannot add yourself as friend",
+            variant: "destructive",
+            icon: "error"
+          });
+          return;
+        }
+
+        // Check if already friends
+        const areFriends = await readContract({
+          contract: UserRegistryContract,
+          method: "function areFriends(address, address) view returns (bool)",
+          params: [account.address, userAddress],
+        });
+
+        if (areFriends) {
+          alert.hideAlert(loadingId);
+          await alert.showInfoAlert({
+            title: "Already Friends",
+            message: "Already friends with this user",
+            icon: "info"
+          });
+          return;
+        }
+
+        // Check if they already sent me a request
+        const requestReceived = await readContract({
+          contract: UserRegistryContract,
+          method: "function friendRequests(address, address) view returns (bool)",
+          params: [userAddress, account.address],
+        });
+
+        if (requestReceived) {
+          alert.hideAlert(loadingId);
+          await alert.showInfoAlert({
+            title: "Pending Request",
+            message: "There is already a pending request from this user",
+            icon: "info"
+          });
+          return;
+        }
+
+        // Check if I already sent them a request
+        const requestSent = await readContract({
+          contract: UserRegistryContract,
+          method: "function friendRequests(address, address) view returns (bool)",
+          params: [account.address, userAddress],
+        });
+
+        if (requestSent) {
+          alert.hideAlert(loadingId);
+          await alert.showInfoAlert({
+            title: "Request Already Sent",
+            message: "Friend request already sent",
+            icon: "info"
+          });
+          return;
+        }
+
+        // Send friend request via API
+        const response = await sendFriendRequest(account.address, userAddress);
+        
+        // Hide loading alert
+        alert.hideAlert(loadingId);
+        
+        // Show success message
+        await alert.showInfoAlert({
+          title: "Friend Request Sent",
+          message: `Friend request sent to ${username} successfully!`,
+          icon: "success"
+        });
+
+        // Auto-refresh data when friend is added successfully
+        refetchFriends();
+        DeviceEventEmitter.emit('refreshSocialData');
+
+      } catch (apiError: any) {
+        // Hide loading alert
+        alert.hideAlert(loadingId);
+        
+        // Show specific API error
+        await alert.showInfoAlert({
+          title: "Request Failed",
+          message: apiError.message || "Failed to send friend request. Please try again.",
+          variant: "destructive",
+          icon: "error"
+        });
+      }
+    } catch (error: any) {
+      // This catches errors from blockchain calls (readContract), not API calls
+      console.error('Error validating user or checking friendship status:', error);
+      await alert.showInfoAlert({
+        title: "Validation Error",
+        message: "Error validating user information. Please try again.",
+        variant: "destructive",
+        icon: "error"
+      });
+    }
   };
 
   const handleShowSuccessMessage = async (message: string) => {
@@ -386,7 +542,7 @@ export default function FriendsScreen() {
         <PixelBackButton />
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="title" style={styles.title}>
-            {showRequests ? 'Friend Requests' : 'Friends'}
+            Friends
           </ThemedText>
         </ThemedView>
         
@@ -410,147 +566,98 @@ export default function FriendsScreen() {
           </TouchableOpacity>
         </ThemedView>
         
+        {/* Add Friend Button - only visible in Friends view */}
+        {!showRequests && (
+          <TouchableOpacity style={styles.addFriendButton} onPress={handleAddFriend}>
+            <ThemedText style={styles.addFriendButtonText}>+ Add Friend</ThemedText>
+          </TouchableOpacity>
+        )}
+        
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
         >
-          {showRequests ? (
-            // Friend Requests View
-            isLoadingRequests ? (
+          {!showRequests ? (
+            // Friends List
+            isLoadingFriends || isLoadingNames ? (
               <ThemedView style={styles.loadingContainer}>
-                <ThemedText style={styles.loadingText}>
-                  Loading requests...
-                </ThemedText>
+                <ThemedText style={styles.loadingText}>Loading friends...</ThemedText>
               </ThemedView>
-            ) : friendRequests.length === 0 ? (
+            ) : friendsWithNames.length === 0 ? (
               <ThemedView style={styles.emptyContainer}>
-                <ThemedText style={styles.emptyText}>
-                  No pending friend requests
-                </ThemedText>
+                <ThemedText style={styles.emptyText}>No friends yet</ThemedText>
               </ThemedView>
             ) : (
               <ThemedView style={styles.friendsContainer}>
-                {friendRequests.map((request) => (
-                  <ThemedView key={request.address} style={styles.requestItem}>
-                    <ThemedView style={styles.friendInfo}>
-                      <ThemedText style={styles.friendName}>
-                        {request.name}
-                      </ThemedText>
+                {friendsWithNames.map((friend) => (
+                  <ThemedView key={friend.address} style={styles.friendItem}>
+                    <View style={styles.friendInfo}>
+                      <ThemedText style={styles.friendName}>{friend.name}</ThemedText>
                       <ThemedText style={styles.friendAddress}>
-                        {request.address.slice(0, 6)}...{request.address.slice(-4)}
+                        {friend.address.slice(0, 6)}...{friend.address.slice(-4)}
                       </ThemedText>
-                    </ThemedView>
-                    <ThemedView style={styles.requestButtons}>
-                      <TouchableOpacity
+                    </View>
+                    <View style={styles.requestButtons}>
+                      <TouchableOpacity 
                         style={styles.acceptButton}
-                        onPress={() => handleAcceptRequest(request.address, request.name)}
+                        onPress={() => handleViewFriendForest(friend.address, friend.name)}
                       >
-                        <ThemedText style={styles.acceptButtonText}>
-                          Accept
-                        </ThemedText>
+                        <ThemedText style={styles.acceptButtonText}>View</ThemedText>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.rejectButton}
-                        onPress={() => handleRejectRequest(request.address, request.name)}
+                      <TouchableOpacity 
+                        style={styles.removeButton}
+                        onPress={() => handleRemoveFriend(friend.address, friend.name)}
                       >
-                        <ThemedText style={styles.rejectButtonText}>
-                          Cancel
-                        </ThemedText>
+                        <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
                       </TouchableOpacity>
-                    </ThemedView>
+                    </View>
                   </ThemedView>
                 ))}
               </ThemedView>
             )
           ) : (
-            // Friends View
-            isLoadingFriends || isLoadingNames ? (
+            // Friend Requests
+            isLoadingRequests ? (
               <ThemedView style={styles.loadingContainer}>
-                <ThemedText style={styles.loadingText}>
-                  Loading friends...
-                </ThemedText>
+                <ThemedText style={styles.loadingText}>Loading requests...</ThemedText>
               </ThemedView>
-            ) : friendsWithNames.length === 0 ? (
-              <>
-                <ThemedView style={styles.emptyContainer}>
-                  <ThemedText style={styles.emptyText}>
-                    No friends found
-                  </ThemedText>
-                </ThemedView>
-                <TouchableOpacity
-                  style={styles.addFriendButton}
-                  onPress={handleAddFriend}
-                >
-                  <ThemedText style={styles.addFriendButtonText}>
-                    + Add Friend
-                  </ThemedText>
-                </TouchableOpacity>
-              </>
+            ) : friendRequests.length === 0 ? (
+              <ThemedView style={styles.emptyContainer}>
+                <ThemedText style={styles.emptyText}>No pending requests</ThemedText>
+              </ThemedView>
             ) : (
               <ThemedView style={styles.friendsContainer}>
-                {friendsWithNames.map((friend, index) => (
-                  <TouchableOpacity 
-                    key={friend.address} 
-                    style={styles.friendItem}
-                    onPress={() => handleViewFriendForest(friend.address, friend.name)}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedView style={styles.friendInfo}>
-                      <ThemedText style={styles.friendName}>
-                        {friend.name}
-                      </ThemedText>
+                {friendRequests.map((request) => (
+                  <ThemedView key={request.address} style={styles.requestItem}>
+                    <View style={styles.friendInfo}>
+                      <ThemedText style={styles.friendName}>{request.name}</ThemedText>
                       <ThemedText style={styles.friendAddress}>
-                        {friend.address.slice(0, 6)}...{friend.address.slice(-4)}
+                        {request.address.slice(0, 6)}...{request.address.slice(-4)}
                       </ThemedText>
-                    </ThemedView>
-                    <ThemedView style={styles.friendActions}>
-                      <TouchableOpacity
-                        style={styles.viewForestButton}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleViewFriendForest(friend.address, friend.name);
-                        }}
+                    </View>
+                    <View style={styles.requestButtons}>
+                      <TouchableOpacity 
+                        style={styles.acceptButton}
+                        onPress={() => handleAcceptRequest(request.address, request.name)}
+                        disabled={isProcessing}
                       >
-                        <ThemedText style={styles.viewForestButtonText}>
-                          Forest View
-                        </ThemedText>
+                        <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
                       </TouchableOpacity>
-                      <TouchableOpacity
+                      <TouchableOpacity 
                         style={styles.removeButton}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFriend(friend.address, friend.name);
-                        }}
+                        onPress={() => handleRejectRequest(request.address, request.name)}
+                        disabled={isProcessing}
                       >
-                        <ThemedText style={styles.removeButtonText}>
-                          Delete
-                        </ThemedText>
+                        <ThemedText style={styles.removeButtonText}>Reject</ThemedText>
                       </TouchableOpacity>
-                    </ThemedView>
-                  </TouchableOpacity>
+                    </View>
+                  </ThemedView>
                 ))}
-                <TouchableOpacity
-                  style={styles.addFriendButton}
-                  onPress={handleAddFriend}
-                >
-                  <ThemedText style={styles.addFriendButtonText}>
-                    + Add Friend
-                  </ThemedText>
-                </TouchableOpacity>
               </ThemedView>
             )
           )}
         </ScrollView>
 
-        {/* Add Friend Alert */}
-        <AddFriendAlert
-          show={showAddFriendAlert}
-          onClose={() => setShowAddFriendAlert(false)}
-          onSendFriendRequest={() => {}} // Dummy function, not used anymore
-          onSuccess={handleShowSuccessMessage}
-        />
-
-        {/* Alert Renderer */}
         <AlertRenderer alerts={alert._alerts} />
       </ThemedView>
     </ProtectedRoute>

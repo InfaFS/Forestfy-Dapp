@@ -1,14 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
-import { BaseAlert } from './BaseAlert';
+import { BaseAlert, BaseAlertRef } from './BaseAlert';
 import { InfoAlertProps } from '@/types/alerts';
-import { 
-  focusAlertTheme, 
-  friendsAlertTheme, 
-  sessionLostTheme, 
-  defaultAlertTheme 
-} from '@/constants/AlertTheme';
 
 export const InfoAlert: React.FC<InfoAlertProps> = ({
   show,
@@ -27,47 +21,21 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
     PressStart2P_400Regular,
   });
 
-  // Get theme config for styling
-  const getThemeConfig = () => {
-    switch (theme) {
-      case 'focus':
-        return focusAlertTheme;
-      case 'friends':
-        return friendsAlertTheme;
-      case 'sessionLost':
-        return sessionLostTheme;
-      default:
-        return defaultAlertTheme;
-    }
-  };
-
-  const themeConfig = getThemeConfig();
+  const baseAlertRef = useRef<BaseAlertRef>(null);
 
   const handleButtonPress = () => {
     if (onButtonPress) {
       onButtonPress();
-    } else {
-      onClose();
     }
+    // Always use animated close
+    baseAlertRef.current?.closeWithAnimation();
   };
 
   if (!fontsLoaded) return null;
 
-  // Use theme-specific styles or fallback to default
-  const titleStyle = themeConfig.typography?.title || styles.title;
-  const subtitleStyle = themeConfig.typography?.subtitle || styles.subtitle;
-  const buttonStyle = [
-    themeConfig.buttons?.button || styles.button,
-    themeConfig.buttons?.confirm || styles.confirmButton,
-    variant === 'destructive' && (themeConfig.buttons?.destructive || styles.destructiveButton)
-  ];
-  const buttonTextStyle = [
-    themeConfig.buttons?.text || styles.buttonText,
-    (variant === 'destructive' && theme === 'sessionLost') && { color: '#fef5eb' }
-  ];
-
   return (
     <BaseAlert
+      ref={baseAlertRef}
       show={show}
       onClose={onClose}
       icon={icon}
@@ -75,19 +43,22 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
       theme={theme}
       allowBackdropClose={allowBackdropClose}
     >
-      <Text style={titleStyle}>
+      <Text style={styles.title}>
         {title}
       </Text>
       {message && (
-        <Text style={subtitleStyle}>
+        <Text style={styles.subtitle}>
           {message}
         </Text>
       )}
       <TouchableOpacity
-        style={buttonStyle}
+        style={[
+          styles.button,
+          variant === 'destructive' ? styles.destructiveButton : styles.confirmButton
+        ]}
         onPress={handleButtonPress}
       >
-        <Text style={buttonTextStyle}>
+        <Text style={styles.buttonText}>
           {buttonText}
         </Text>
       </TouchableOpacity>
@@ -95,30 +66,30 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
   );
 };
 
-// Fallback styles for when theme doesn't provide specific styles
+// NFT alert styling (same as ConfirmNFTListAlert)
 const styles = StyleSheet.create({
   title: {
-    fontSize: 16,
+    fontSize: 12,
     fontFamily: 'PressStart2P_400Regular',
     color: '#2d5016',
     marginBottom: 10,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 16,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'PressStart2P_400Regular',
     color: '#4a7c59',
     marginBottom: 20,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 14,
   },
   button: {
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 2,
     borderColor: '#2d5016',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     minWidth: 100,
     alignItems: 'center',
     marginTop: 10,
@@ -132,6 +103,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#2d5016',
     fontFamily: 'PressStart2P_400Regular',
-    fontSize: 10,
+    fontSize: 8,
   },
 }); 

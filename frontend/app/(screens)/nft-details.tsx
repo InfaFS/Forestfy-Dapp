@@ -4,7 +4,8 @@ import { ThemedView, ThemedText } from '@/components/ui';
 import { ProtectedRoute } from '@/components/auth';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { useLocalSearchParams, router } from 'expo-router';
-import { NFTBuyAlert, ConfirmNFTBuyAlert } from '@/components/alerts';
+import { useAlert } from '@/hooks/useAlert';
+import { AlertRenderer } from '@/components/alerts/AlertRenderer';
 import { useNFTMetadata } from '@/hooks/useNFTMetadata';
 import { useMarketplaceListing } from '@/hooks/useMarketplaceListing';
 import { useUserWalletData } from '@/hooks/useUserWalletData';
@@ -28,10 +29,7 @@ interface Listing {
 
 export default function NFTDetailsScreen() {
   const { tokenId } = useLocalSearchParams<{ tokenId: string }>();
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showConfirmBuy, setShowConfirmBuy] = useState(false);
+  const alert = useAlert();
   const [confirmBuyFunction, setConfirmBuyFunction] = useState<(() => Promise<void>) | null>(null);
   const [isPurchaseInProgress, setIsPurchaseInProgress] = useState(false);
   const [cachedListing, setCachedListing] = useState<Listing | null>(null);
@@ -117,48 +115,62 @@ export default function NFTDetailsScreen() {
     }, 5000);
   };
 
-  const handleBuyStart = (confirmBuyFn: () => Promise<void>) => {
+  const handleBuyStart = async (confirmBuyFn: () => Promise<void>) => {
     setIsPurchaseInProgress(true);
     setConfirmBuyFunction(() => confirmBuyFn);
-    setShowConfirmBuy(true);
+    
+    const currentListing = (isPurchaseInProgress && cachedListing) ? cachedListing : listing;
+    if (!currentListing) return;
+    
+    const confirmed = await alert.showConfirmAlert({
+      title: "Confirm Purchase",
+      message: `Are you sure you want to buy ${metadata?.name || `Tree #${tokenId}`} for ${formatPrice(currentListing.price)} FTK?`,
+      confirmText: "Buy",
+      cancelText: "Cancel",
+      icon: "logo"
+    });
+    
+    if (confirmed && confirmBuyFn) {
+      try {
+        await confirmBuyFn();
+      } catch (error) {
+        setIsPurchaseInProgress(false);
+      }
+    } else {
+      setIsPurchaseInProgress(false);
+    }
   };
 
   const handleBuyComplete = async (success: boolean, message: string) => {
-    setShowConfirmBuy(false);
-    setAlertType(success ? 'success' : 'error');
+    setIsPurchaseInProgress(false);
     
-    // Usar mensaje personalizado para compras exitosas
     if (success && currentListing && tokenId) {
       const price = formatPrice(currentListing.price);
       const successMessage = NOTIFICATION_MESSAGES.nftPurchased.getMessage(tokenId, price);
-      setAlertMessage(successMessage);
-    } else {
-      setAlertMessage(message);
-    }
-    
-    setShowAlert(true);
-  };
-
-  const handleAlertClose = async () => {
-    setShowAlert(false);
-    
-    // Si la alerta era de éxito, actualizar datos con reintentos y redirigir
-    if (alertType === 'success') {
-      console.log('🎉 Compra exitosa confirmada, actualizando datos del comprador...');
       
-      // Usar el sistema de reintentos agresivos
+      await alert.showInfoAlert({
+        title: "Success!",
+        message: successMessage,
+        buttonText: "OK",
+        icon: "success"
+      });
+      
+      // Actualizar datos y redirigir
+      console.log('🎉 Compra exitosa confirmada, actualizando datos del comprador...');
       updateBuyerDataAfterPurchase();
       
-      // Redirigir después de un breve delay para permitir que las actualizaciones comiencen
       setTimeout(() => {
         router.back();
       }, 500);
+    } else {
+      await alert.showInfoAlert({
+        title: "Error",
+        message: message,
+        buttonText: "OK",
+        icon: "error",
+        variant: "destructive"
+      });
     }
-  };
-
-  const handleConfirmBuyClose = () => {
-    setShowConfirmBuy(false);
-    setIsPurchaseInProgress(false);
   };
 
   if (!fontsLoaded) {
@@ -174,6 +186,7 @@ export default function NFTDetailsScreen() {
           <ThemedView style={styles.loadingContainer}>
             <ThemedText style={styles.loadingText}>Loading NFT details...</ThemedText>
           </ThemedView>
+          <AlertRenderer alerts={alert._alerts} />
         </ThemedView>
       </ProtectedRoute>
     );
@@ -191,6 +204,7 @@ export default function NFTDetailsScreen() {
           <ThemedView style={styles.errorContainer}>
             <ThemedText style={styles.errorText}>NFT not found or not listed for sale</ThemedText>
           </ThemedView>
+          <AlertRenderer alerts={alert._alerts} />
         </ThemedView>
       </ProtectedRoute>
     );
@@ -286,26 +300,7 @@ export default function NFTDetailsScreen() {
           </ThemedView>
         </ScrollView>
 
-        {/* Alertas */}
-        <NFTBuyAlert
-          show={showAlert}
-          type={alertType}
-          message={alertMessage}
-          onClose={handleAlertClose}
-        />
-
-        <ConfirmNFTBuyAlert
-          show={showConfirmBuy}
-          nftName={metadata?.name || `Tree #${tokenId}`}
-          price={currentListing ? formatPrice(currentListing.price) : '0'}
-          onConfirm={() => {
-            if (confirmBuyFunction) {
-              confirmBuyFunction();
-            }
-            handleConfirmBuyClose();
-          }}
-          onClose={handleConfirmBuyClose}
-        />
+        <AlertRenderer alerts={alert._alerts} />
       </ThemedView>
     </ProtectedRoute>
   );

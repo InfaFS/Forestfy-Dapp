@@ -78,11 +78,15 @@ export const useAlert = (): UseAlertResult => {
   };
 
   const hideAlert = useCallback((id: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+    setTimeout(() => {
+      setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+    }, 0);
   }, []);
 
   const hideAllAlerts = useCallback(() => {
-    setAlerts([]);
+    setTimeout(() => {
+      setAlerts([]);
+    }, 0);
   }, []);
 
   const showConfirmAlert = useCallback(
@@ -115,15 +119,17 @@ export const useAlert = (): UseAlertResult => {
           },
         };
 
-        setAlerts((prev) => [
-          ...prev,
-          {
-            id,
-            type: "confirm",
-            props: alertProps,
-            resolve,
-          },
-        ]);
+        setTimeout(() => {
+          setAlerts((prev) => [
+            ...prev,
+            {
+              id,
+              type: "confirm",
+              props: alertProps,
+              resolve,
+            },
+          ]);
+        }, 0);
       });
     },
     [hideAlert]
@@ -146,31 +152,11 @@ export const useAlert = (): UseAlertResult => {
     }): Promise<string | null> => {
       return new Promise((resolve) => {
         const id = generateId();
-        let inputValue = "";
 
         const alertProps = {
           ...config,
           type: "input" as const,
           show: true,
-          inputValue,
-          onInputChange: (value: string) => {
-            inputValue = value;
-            // Actualizar el estado del alert
-            setAlerts((prev) =>
-              prev.map((alert) => {
-                if (alert.id === id) {
-                  return {
-                    ...alert,
-                    props: {
-                      ...alert.props,
-                      inputValue: value,
-                    },
-                  };
-                }
-                return alert;
-              })
-            );
-          },
           onClose: () => {
             hideAlert(id);
             resolve(null);
@@ -181,15 +167,17 @@ export const useAlert = (): UseAlertResult => {
           },
         };
 
-        setAlerts((prev) => [
-          ...prev,
-          {
-            id,
-            type: "input",
-            props: alertProps,
-            resolve,
-          },
-        ]);
+        setTimeout(() => {
+          setAlerts((prev) => [
+            ...prev,
+            {
+              id,
+              type: "input",
+              props: alertProps,
+              resolve,
+            },
+          ]);
+        }, 0);
       });
     },
     [hideAlert]
@@ -224,15 +212,17 @@ export const useAlert = (): UseAlertResult => {
           },
         };
 
-        setAlerts((prev) => [
-          ...prev,
-          {
-            id,
-            type: "info",
-            props: alertProps,
-            resolve,
-          },
-        ]);
+        setTimeout(() => {
+          setAlerts((prev) => [
+            ...prev,
+            {
+              id,
+              type: "info",
+              props: alertProps,
+              resolve,
+            },
+          ]);
+        }, 0);
       });
     },
     [hideAlert]
@@ -264,14 +254,16 @@ export const useAlert = (): UseAlertResult => {
           : undefined,
       };
 
-      setAlerts((prev) => [
-        ...prev,
-        {
-          id,
-          type: "loading",
-          props: alertProps,
-        },
-      ]);
+      setTimeout(() => {
+        setAlerts((prev) => [
+          ...prev,
+          {
+            id,
+            type: "loading",
+            props: alertProps,
+          },
+        ]);
+      }, 0);
 
       return id;
     },
@@ -280,30 +272,24 @@ export const useAlert = (): UseAlertResult => {
 
   const updateLoadingAlert = useCallback(
     (id: string, updates: { progress?: number; loadingText?: string }) => {
-      setAlerts((prev) =>
-        prev.map((alert) => {
-          if (alert.id === id && alert.type === "loading") {
-            return {
-              ...alert,
-              props: {
-                ...alert.props,
-                ...updates,
-              },
-            };
-          }
-          return alert;
-        })
-      );
+      setTimeout(() => {
+        setAlerts((prev) =>
+          prev.map((alert) =>
+            alert.id === id
+              ? {
+                  ...alert,
+                  props: {
+                    ...alert.props,
+                    ...updates,
+                  },
+                }
+              : alert
+          )
+        );
+      }, 0);
     },
     []
   );
-
-  // Exponer los alerts para el renderer
-  const alertsToRender = alerts.map((alert) => ({
-    id: alert.id,
-    type: alert.type,
-    props: alert.props,
-  }));
 
   return {
     showConfirmAlert,
@@ -313,6 +299,6 @@ export const useAlert = (): UseAlertResult => {
     hideAlert,
     hideAllAlerts,
     updateLoadingAlert,
-    _alerts: alertsToRender,
+    _alerts: alerts,
   };
 };

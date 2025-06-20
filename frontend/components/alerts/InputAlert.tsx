@@ -9,7 +9,7 @@ export const InputAlert: React.FC<InputAlertProps> = ({
   onClose,
   onSubmit,
   onCancel,
-  inputValue,
+  inputValue: initialValue = '',
   onInputChange,
   title = "Enter Information",
   message,
@@ -27,28 +27,37 @@ export const InputAlert: React.FC<InputAlertProps> = ({
   autoCloseDelay = 3000,
 }) => {
   const [localError, setLocalError] = useState<string>('');
+  const [localInputValue, setLocalInputValue] = useState<string>(initialValue);
   const colors = getVariantColors(variant);
 
   // Reset local error when input changes
   useEffect(() => {
-    if (localError && inputValue !== '') {
+    if (localError && localInputValue !== '') {
       setLocalError('');
     }
-  }, [inputValue, localError]);
+  }, [localInputValue, localError]);
 
   // Reset everything when alert opens
   useEffect(() => {
     if (show) {
       setLocalError('');
+      setLocalInputValue(initialValue);
     }
-  }, [show]);
+  }, [show, initialValue]);
+
+  const handleInputChange = (value: string) => {
+    setLocalInputValue(value);
+    if (onInputChange) {
+      onInputChange(value);
+    }
+  };
 
   const handleSubmit = () => {
     if (isLoading) return;
 
     // Validate if validation function provided
     if (validation) {
-      const error = validation(inputValue);
+      const error = validation(localInputValue);
       if (error) {
         setLocalError(error);
         return;
@@ -56,12 +65,12 @@ export const InputAlert: React.FC<InputAlertProps> = ({
     }
 
     // Basic validation
-    if (!inputValue.trim()) {
+    if (!localInputValue.trim()) {
       setLocalError('This field is required');
       return;
     }
 
-    onSubmit(inputValue.trim());
+    onSubmit(localInputValue.trim());
   };
 
   const handleCancel = () => {
@@ -75,7 +84,7 @@ export const InputAlert: React.FC<InputAlertProps> = ({
   };
 
   const displayError = errorMessage || localError;
-  const isSubmitDisabled = !inputValue.trim() || isLoading || !!displayError;
+  const isSubmitDisabled = !localInputValue.trim() || isLoading || !!displayError;
 
   return (
     <BaseAlert
@@ -94,8 +103,8 @@ export const InputAlert: React.FC<InputAlertProps> = ({
           styles.input,
           displayError ? styles.inputError : null
         ]}
-        value={inputValue}
-        onChangeText={onInputChange}
+        value={localInputValue}
+        onChangeText={handleInputChange}
         placeholder={placeholder}
         placeholderTextColor="#999"
         autoFocus={show}

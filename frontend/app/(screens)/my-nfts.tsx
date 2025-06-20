@@ -7,7 +7,8 @@ import { MarketplaceContract, NFTContract } from '@/constants/thirdweb';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { router } from 'expo-router';
 import { listNFT, unlistNFT } from '@/constants/api';
-import { NFTBuyAlert, ConfirmNFTListAlert, ConfirmNFTUnlistAlert } from '@/components/alerts';
+import { useAlert } from '@/hooks/useAlert';
+import { AlertRenderer } from '@/components/alerts/AlertRenderer';
 import { useTrees } from '@/contexts/TreesContext';
 import { useMarketplace } from '@/contexts/MarketplaceContext';
 import { useUserNFTsWithListing } from '@/hooks/useUserNFTsWithListing';
@@ -42,13 +43,9 @@ interface NFTWithListing {
 export default function MyNFTsScreen() {
   const [userNFTs, setUserNFTs] = useState<NFTData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
-  const [alertMessage, setAlertMessage] = useState('');
+  const alert = useAlert();
   const [priceInputs, setPriceInputs] = useState<{[key: string]: string}>({});
   const [processingTokens, setProcessingTokens] = useState<Set<string>>(new Set());
-  const [showConfirmList, setShowConfirmList] = useState(false);
-  const [showConfirmUnlist, setShowConfirmUnlist] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<NFTData | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -176,42 +173,54 @@ export default function MyNFTsScreen() {
     }));
   };
 
-  const handleListNFT = (tokenId: string) => {
+  const handleListNFT = async (tokenId: string) => {
     const price = priceInputs[tokenId];
     if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-      setAlertType('error');
-      setAlertMessage('Please enter a valid price');
-      setShowAlert(true);
+      await alert.showInfoAlert({
+        title: "Invalid Price",
+        message: "Please enter a valid price",
+        buttonText: "OK",
+        icon: "error",
+        variant: "destructive"
+      });
       return;
     }
 
     const nft = userNFTs.find(n => n.tokenId === tokenId);
-    if (nft) {
-      setSelectedNFT(nft);
-      setShowConfirmList(true);
+    if (!nft) return;
+
+    const confirmed = await alert.showConfirmAlert({
+      title: "Confirm Listing",
+      message: `Are you sure you want to list ${nft.metadata?.name || `NFT #${nft.tokenId}`} for ${price} FTK?`,
+      confirmText: "List",
+      cancelText: "Cancel",
+      icon: "logo"
+    });
+
+    if (confirmed) {
+      await handleConfirmListNFT(nft, price);
     }
   };
 
-  const handleConfirmListNFT = async () => {
-    if (!selectedNFT) return;
-    
-    const price = priceInputs[selectedNFT.tokenId];
-    setProcessingTokens(prev => new Set(prev).add(selectedNFT.tokenId));
-    setShowConfirmList(false);
+  const handleConfirmListNFT = async (nft: NFTData, price: string) => {
+    setProcessingTokens(prev => new Set(prev).add(nft.tokenId));
 
     try {
-      await listNFT(address, selectedNFT.tokenId, Number(price));
+      await listNFT(address, nft.tokenId, Number(price));
       
       // Actualizar el estado local
-      setUserNFTs(prev => prev.map(nft => 
-        nft.tokenId === selectedNFT.tokenId 
-          ? { ...nft, isListed: true, price: Number(price).toFixed(2) }
-          : nft
+      setUserNFTs(prev => prev.map(n => 
+        n.tokenId === nft.tokenId 
+          ? { ...n, isListed: true, price }
+          : n
       ));
 
-      setAlertType('success');
-      setAlertMessage('Success! NFT listed successfully');
-      setShowAlert(true);
+      await alert.showInfoAlert({
+        title: "Success!",
+        message: "NFT listed successfully",
+        buttonText: "OK",
+        icon: "success"
+      });
       
       // Refrescar datos desde el contrato para evitar problemas de cache
       setTimeout(async () => {
@@ -221,54 +230,60 @@ export default function MyNFTsScreen() {
       // Actualizar marketplace y NFTs automáticamente
       triggerMarketplaceRefresh();
       triggerTreesRefresh();
-      
-      // Limpiar el input de precio
-      setPriceInputs(prev => {
-        const newInputs = { ...prev };
-        delete newInputs[selectedNFT.tokenId];
-        return newInputs;
-      });
     } catch (error: any) {
-      setAlertType('error');
-      setAlertMessage(error.message || 'Error listing NFT');
-      setShowAlert(true);
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || 'Error listing NFT',
+        buttonText: "OK",
+        icon: "error",
+        variant: "destructive"
+      });
     } finally {
       setProcessingTokens(prev => {
         const newSet = new Set(prev);
-        newSet.delete(selectedNFT.tokenId);
+        newSet.delete(nft.tokenId);
         return newSet;
       });
-      setSelectedNFT(null);
     }
   };
 
-  const handleUnlistNFT = (tokenId: string) => {
+  const handleUnlistNFT = async (tokenId: string) => {
     const nft = userNFTs.find(n => n.tokenId === tokenId);
-    if (nft) {
-      setSelectedNFT(nft);
-      setShowConfirmUnlist(true);
+    if (!nft) return;
+
+    const confirmed = await alert.showConfirmAlert({
+      title: "Confirm Unlisting",
+      message: `Are you sure you want to unlist ${nft.metadata?.name || `NFT #${nft.tokenId}`} from the marketplace?`,
+      confirmText: "Unlist",
+      cancelText: "Cancel",
+      icon: "logo",
+      variant: "destructive"
+    });
+
+    if (confirmed) {
+      await handleConfirmUnlistNFT(nft);
     }
   };
 
-  const handleConfirmUnlistNFT = async () => {
-    if (!selectedNFT) return;
-    
-    setProcessingTokens(prev => new Set(prev).add(selectedNFT.tokenId));
-    setShowConfirmUnlist(false);
+  const handleConfirmUnlistNFT = async (nft: NFTData) => {
+    setProcessingTokens(prev => new Set(prev).add(nft.tokenId));
 
     try {
-      await unlistNFT(address, selectedNFT.tokenId);
+      await unlistNFT(address, nft.tokenId);
       
       // Actualizar el estado local
-      setUserNFTs(prev => prev.map(nft => 
-        nft.tokenId === selectedNFT.tokenId 
-          ? { ...nft, isListed: false, price: undefined }
-          : nft
+      setUserNFTs(prev => prev.map(n => 
+        n.tokenId === nft.tokenId 
+          ? { ...n, isListed: false, price: undefined }
+          : n
       ));
 
-      setAlertType('success');
-      setAlertMessage('Success! NFT unlisted successfully');
-      setShowAlert(true);
+      await alert.showInfoAlert({
+        title: "Success!",
+        message: "NFT unlisted successfully",
+        buttonText: "OK",
+        icon: "success"
+      });
       
       // Refrescar datos desde el contrato para evitar problemas de cache
       setTimeout(async () => {
@@ -279,21 +294,20 @@ export default function MyNFTsScreen() {
       triggerMarketplaceRefresh();
       triggerTreesRefresh();
     } catch (error: any) {
-      setAlertType('error');
-      setAlertMessage(error.message || 'Error unlisting NFT');
-      setShowAlert(true);
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || 'Error unlisting NFT',
+        buttonText: "OK",
+        icon: "error",
+        variant: "destructive"
+      });
     } finally {
       setProcessingTokens(prev => {
         const newSet = new Set(prev);
-        newSet.delete(selectedNFT.tokenId);
+        newSet.delete(nft.tokenId);
         return newSet;
       });
-      setSelectedNFT(null);
     }
-  };
-
-  const handleAlertClose = () => {
-    setShowAlert(false);
   };
 
   const handleRefresh = async () => {
@@ -416,33 +430,7 @@ export default function MyNFTsScreen() {
           )}
         </ScrollView>
         
-        <NFTBuyAlert
-          show={showAlert}
-          onClose={handleAlertClose}
-          type={alertType}
-          message={alertMessage}
-        />
-
-        <ConfirmNFTListAlert
-          show={showConfirmList}
-          onConfirm={handleConfirmListNFT}
-          onClose={() => {
-            setShowConfirmList(false);
-            setSelectedNFT(null);
-          }}
-          nftName={selectedNFT?.metadata?.name || `NFT #${selectedNFT?.tokenId}`}
-          price={selectedNFT ? priceInputs[selectedNFT.tokenId] || '0' : '0'}
-        />
-
-        <ConfirmNFTUnlistAlert
-          show={showConfirmUnlist}
-          onConfirm={handleConfirmUnlistNFT}
-          onClose={() => {
-            setShowConfirmUnlist(false);
-            setSelectedNFT(null);
-          }}
-          nftName={selectedNFT?.metadata?.name || `NFT #${selectedNFT?.tokenId}`}
-        />
+        <AlertRenderer alerts={alert._alerts} />
 
         {/* Toast para eventos en tiempo real */}
         <EventToast
@@ -450,7 +438,6 @@ export default function MyNFTsScreen() {
           message={toastMessage}
           type={toastType}
           onHide={handleToastHide}
-          duration={4000}
         />
       </ThemedView>
     </ProtectedRoute>
