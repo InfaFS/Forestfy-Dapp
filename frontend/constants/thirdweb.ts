@@ -1,9 +1,8 @@
 import { createThirdwebClient, getContract } from "thirdweb";
 import { defineChain } from "thirdweb/chains";
 
-const clientId = "b3dd74f4d2ae890b10e48bba408c2642";
-const secretKey =
-  "NMUG7p47DUpxv0h6gMMHoPoTW0O2WWnAHamSq3tPU6vvtByK45hJJe3vd-JOdHriXSVX4b7KyeWrfkWyyx3lIQ";
+const clientId = process.env.EXPO_PUBLIC_THIRDWEB_CLIENT_ID;
+const secretKey = process.env.EXPO_PUBLIC_THIRDWEB_SECRET_KEY;
 
 const nftContractAddress = process.env.EXPO_PUBLIC_NFT_CONTRACT_ADDRESS;
 const tokenContractAddress = process.env.EXPO_PUBLIC_TOKEN_CONTRACT_ADDRESS;
