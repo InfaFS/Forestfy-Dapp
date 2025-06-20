@@ -421,12 +421,23 @@ export default function SocialScreen() {
   const handleConfirmAcceptRequest = async (fromAddress: string, fromName: string) => {
     if (!account?.address) return;
 
+    // Show loading alert
+    const loadingId = alert.showLoadingAlert({
+      title: "Accepting Request",
+      message: `Accepting friend request from ${fromName}...`,
+      allowCancel: false
+    });
+
     setIsProcessing(true);
     try {
       await acceptFriendRequest(fromAddress, account.address);
       
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
       await alert.showInfoAlert({
-        title: `You are now friends with ${fromName}!`,
+        title: "Friend Request Accepted",
+        message: `You are now friends with ${fromName}!`,
         icon: "success"
       });
       
@@ -438,7 +449,15 @@ export default function SocialScreen() {
       
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
-      Alert.alert("Error", error.message || "Could not accept friend request");
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || "Could not accept friend request",
+        variant: "destructive",
+        icon: "error"
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -461,12 +480,23 @@ export default function SocialScreen() {
   const handleConfirmCancelRequest = async (fromAddress: string, fromName: string) => {
     if (!account?.address) return;
 
+    // Show loading alert
+    const loadingId = alert.showLoadingAlert({
+      title: "Rejecting Request",
+      message: `Rejecting friend request from ${fromName}...`,
+      allowCancel: false
+    });
+
     setIsProcessing(true);
     try {
       await cancelFriendRequest(fromAddress, account.address);
       
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
       await alert.showInfoAlert({
-        title: `Friend request from ${fromName} has been cancelled`,
+        title: "Friend Request Rejected",
+        message: `Friend request from ${fromName} has been rejected`,
         icon: "success"
       });
       
@@ -477,7 +507,15 @@ export default function SocialScreen() {
       
     } catch (error: any) {
       console.error("Error cancelling friend request:", error);
-      Alert.alert("Error", error.message || "Could not cancel friend request");
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || "Could not reject friend request",
+        variant: "destructive",
+        icon: "error"
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -500,12 +538,23 @@ export default function SocialScreen() {
   const handleConfirmRemoveFriend = async (friendAddress: string, friendName: string) => {
     if (!account?.address) return;
 
+    // Show loading alert
+    const loadingId = alert.showLoadingAlert({
+      title: "Removing Friend",
+      message: `Removing ${friendName} from your friends list...`,
+      allowCancel: false
+    });
+
     setIsProcessing(true);
     try {
       await removeFriend(account.address, friendAddress);
       
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
       await alert.showInfoAlert({
-        title: `${friendName} has been removed from your friends list`,
+        title: "Friend Removed",
+        message: `${friendName} has been removed from your friends list`,
         icon: "success"
       });
       
@@ -515,7 +564,15 @@ export default function SocialScreen() {
       
     } catch (error: any) {
       console.error("Error removing friend:", error);
-      Alert.alert("Error", error.message || "Could not remove friend");
+      // Hide loading alert
+      alert.hideAlert(loadingId);
+      
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || "Could not remove friend",
+        variant: "destructive",
+        icon: "error"
+      });
     } finally {
       setIsProcessing(false);
     }

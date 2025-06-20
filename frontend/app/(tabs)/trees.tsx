@@ -170,9 +170,37 @@ export default function TreesScreen() {
 
 	const handleClaimFirstParcel = async () => {
 		if (!account?.address) {
-			Alert.alert("Error", "Please connect your wallet first");
+			await alert.showInfoAlert({
+				title: "Error",
+				message: "Please connect your wallet first",
+				variant: "destructive",
+				icon: "error"
+			});
 			return;
 		}
+
+		const confirmed = await alert.showConfirmAlert({
+			title: "Claim Free Parcel",
+			message: "Are you sure you want to claim your free parcel?",
+			confirmText: "Claim",
+			cancelText: "Cancel",
+			icon: "gift"
+		});
+
+		if (confirmed) {
+			await handleConfirmClaimFirstParcel();
+		}
+	};
+
+	const handleConfirmClaimFirstParcel = async () => {
+		if (!account?.address) return;
+
+		// Show loading alert
+		const loadingId = alert.showLoadingAlert({
+			title: "Claiming Parcel",
+			message: "Claiming your free parcel...",
+			allowCancel: false
+		});
 
 		setIsClaimingParcel(true);
 		try {
@@ -180,14 +208,25 @@ export default function TreesScreen() {
 			// Refrescar los datos del contrato para mostrar la nueva parcela
 			triggerRefresh();
 			
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
 			await alert.showInfoAlert({
-				title: "Parcel claimed successfully!",
-				variant: "success",
+				title: "Parcel Claimed",
+				message: "Parcel claimed successfully!",
 				icon: "success"
 			});
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error claiming first parcel:", error);
-			Alert.alert("Error", "Could not get the parcel. Please try again.");
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
+			await alert.showInfoAlert({
+				title: "Error",
+				message: error.message || "Could not get the parcel. Please try again.",
+				variant: "destructive",
+				icon: "error"
+			});
 		} finally {
 			setIsClaimingParcel(false);
 		}

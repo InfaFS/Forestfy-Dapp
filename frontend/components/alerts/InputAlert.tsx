@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import { BaseAlert } from './BaseAlert';
+import { BaseAlert, BaseAlertRef } from './BaseAlert';
 import { InputAlertProps } from '@/types/alerts';
 import { defaultAlertTheme, getVariantColors } from '@/constants/AlertTheme';
 
@@ -29,6 +29,7 @@ export const InputAlert: React.FC<InputAlertProps> = ({
   const [localError, setLocalError] = useState<string>('');
   const [localInputValue, setLocalInputValue] = useState<string>(initialValue);
   const colors = getVariantColors(variant);
+  const alertRef = useRef<BaseAlertRef>(null);
 
   // Reset local error when input changes
   useEffect(() => {
@@ -70,16 +71,25 @@ export const InputAlert: React.FC<InputAlertProps> = ({
       return;
     }
 
+    // Use animated close for smooth transition
+    if (alertRef.current) {
+      alertRef.current.closeWithAnimation();
+    }
+
     onSubmit(localInputValue.trim());
   };
 
   const handleCancel = () => {
     if (isLoading) return;
     
+    // Use animated close for smooth transition
+    if (alertRef.current) {
+      alertRef.current.closeWithAnimation();
+    }
+    
+    // Call the provided callback after animation starts
     if (onCancel) {
       onCancel();
-    } else {
-      onClose();
     }
   };
 
@@ -88,6 +98,7 @@ export const InputAlert: React.FC<InputAlertProps> = ({
 
   return (
     <BaseAlert
+      ref={alertRef}
       show={show}
       onClose={onClose}
       icon={icon}

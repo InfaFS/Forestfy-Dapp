@@ -90,23 +90,64 @@ export default function ConfigScreen() {
 
 	const handleReclaimReward = async () => {
 		if (!account?.address) {
-			Alert.alert("Error", "Please connect your wallet first");
+			await alert.showInfoAlert({
+				title: "Error",
+				message: "Please connect your wallet first",
+				variant: "destructive",
+				icon: "error"
+			});
 			return;
 		}
+
+		const confirmed = await alert.showConfirmAlert({
+			title: "Claim Reward",
+			message: "Are you sure you want to claim your reward?",
+			confirmText: "Claim",
+			cancelText: "Cancel",
+			icon: "gift"
+		});
+
+		if (confirmed) {
+			await handleConfirmReclaimReward();
+		}
+	};
+
+	const handleConfirmReclaimReward = async () => {
+		if (!account?.address) return;
+
+		// Show loading alert
+		const loadingId = alert.showLoadingAlert({
+			title: "Claiming Reward",
+			message: "Claiming your reward...",
+			allowCancel: false
+		});
 
 		setIsLoading(true);
 		try {
 			await reclaimReward(account.address);
 			setLocalHasClaimed(true);
+			
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
 			await alert.showInfoAlert({
-				title: "Reward claimed successfully",
-				variant: "success",
-				icon: "coin"
+				title: "Reward Claimed",
+				message: "Reward claimed successfully!",
+				icon: "success"
 			});
+			
 			setRefreshTrigger(prev => prev + 1);
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error al reclamar recompensa:", error);
-			Alert.alert("Error", "Could not claim the reward");
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
+			await alert.showInfoAlert({
+				title: "Error",
+				message: error.message || "Could not claim the reward",
+				variant: "destructive",
+				icon: "error"
+			});
 		} finally {
 			setIsLoading(false);
 		}
@@ -244,21 +285,46 @@ export default function ConfigScreen() {
 
 	const handleConfirmChangeName = async (newName: string) => {
 		if (!account?.address) {
-			Alert.alert("Error", "Please connect your wallet first");
+			await alert.showInfoAlert({
+				title: "Error",
+				message: "Please connect your wallet first",
+				variant: "destructive",
+				icon: "error"
+			});
 			return;
 		}
 
+		// Show loading alert
+		const loadingId = alert.showLoadingAlert({
+			title: "Changing Name",
+			message: `Changing name to "${newName}"...`,
+			allowCancel: false
+		});
+
 		try {
 			await changeName(account.address, newName);
+			
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
 			await alert.showInfoAlert({
-				title: `Name changed to "${newName}" successfully!`,
-				variant: "success",
+				title: "Name Changed",
+				message: `Name changed to "${newName}" successfully!`,
 				icon: "success"
 			});
+			
 			setRefreshTrigger(prev => prev + 1);
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error changing name:", error);
-			Alert.alert("Error", "Could not change name. Please try again.");
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
+			await alert.showInfoAlert({
+				title: "Error",
+				message: error.message || "Could not change name. Please try again.",
+				variant: "destructive",
+				icon: "error"
+			});
 		}
 	};
 
