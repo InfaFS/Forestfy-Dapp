@@ -7,7 +7,9 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
-import { AddFriendAlert, RewardAlert, ConfirmationAlert } from '@/components/alerts';
+import { AddFriendAlert } from '@/components/alerts';
+import { useAlert } from '@/hooks/useAlert';
+import { AlertRenderer } from '@/components/alerts/AlertRenderer';
 import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
 import { useUserRegistryEvents } from '@/hooks/useUserRegistryEvents';
 import { useRouter } from "expo-router";
@@ -21,17 +23,8 @@ export default function FriendsScreen() {
   const [showRequests, setShowRequests] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-  // Confirmation alerts
-  const [showAcceptConfirm, setShowAcceptConfirm] = useState(false);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<{address: string, name: string} | null>(null);
-  const [selectedFriend, setSelectedFriend] = useState<{address: string, name: string} | null>(null);
-  const [selectedCancelRequest, setSelectedCancelRequest] = useState<{address: string, name: string} | null>(null);
+  const alert = useAlert();
   const [isProcessing, setIsProcessing] = useState(false);
-  // Success alert
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Cargar fuentes pixel
   const [fontsLoaded] = useFonts({
@@ -234,9 +227,12 @@ export default function FriendsScreen() {
     setShowAddFriendAlert(true);
   };
 
-  const handleShowSuccessMessage = (message: string) => {
-    setSuccessMessage(message);
-    setShowSuccessAlert(true);
+  const handleShowSuccessMessage = async (message: string) => {
+    await alert.showInfoAlert({
+      title: message,
+      variant: "success",
+      icon: "success"
+    });
     // Refresh friends data
     refetchFriends();
     DeviceEventEmitter.emit('refreshSocialData');
@@ -246,23 +242,32 @@ export default function FriendsScreen() {
     setShowRequests(!showRequests);
   };
 
-  const handleAcceptRequest = (fromAddress: string, fromName: string) => {
-    setSelectedRequest({ address: fromAddress, name: fromName });
-    setShowAcceptConfirm(true);
+  const handleAcceptRequest = async (fromAddress: string, fromName: string) => {
+    const confirmed = await alert.showConfirmAlert({
+      title: "Accept Friend Request",
+      message: `Accept friend request from ${fromName}?`,
+      confirmText: "Accept",
+      cancelText: "Cancel",
+      variant: "success"
+    });
+
+    if (confirmed) {
+      await handleConfirmAcceptRequest(fromAddress, fromName);
+    }
   };
 
-  const handleConfirmAcceptRequest = async () => {
-    if (!account?.address || !selectedRequest) return;
+  const handleConfirmAcceptRequest = async (fromAddress: string, fromName: string) => {
+    if (!account?.address) return;
 
     setIsProcessing(true);
     try {
-      await acceptFriendRequest(selectedRequest.address, account.address);
+      await acceptFriendRequest(fromAddress, account.address);
       
-      // Close confirmation and show success
-      setShowAcceptConfirm(false);
-      setSelectedRequest(null);
-      setSuccessMessage(`You are now friends with ${selectedRequest.name}!`);
-      setShowSuccessAlert(true);
+      await alert.showInfoAlert({
+        title: `You are now friends with ${fromName}!`,
+        variant: "success",
+        icon: "success"
+      });
       
       // Refresh data
       refetchFriends();
@@ -272,31 +277,39 @@ export default function FriendsScreen() {
       
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
-      setShowAcceptConfirm(false);
-      setSelectedRequest(null);
       Alert.alert("Error", error.message || "Could not accept friend request");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRejectRequest = (fromAddress: string, fromName: string) => {
-    setSelectedCancelRequest({ address: fromAddress, name: fromName });
-    setShowCancelConfirm(true);
+  const handleRejectRequest = async (fromAddress: string, fromName: string) => {
+    const confirmed = await alert.showConfirmAlert({
+      title: "Reject Friend Request",
+      message: `Reject friend request from ${fromName}?`,
+      confirmText: "Reject",
+      cancelText: "Cancel",
+      destructive: true,
+      variant: "error"
+    });
+
+    if (confirmed) {
+      await handleConfirmCancelRequest(fromAddress, fromName);
+    }
   };
 
-  const handleConfirmCancelRequest = async () => {
-    if (!account?.address || !selectedCancelRequest) return;
+  const handleConfirmCancelRequest = async (fromAddress: string, fromName: string) => {
+    if (!account?.address) return;
 
     setIsProcessing(true);
     try {
-      await cancelFriendRequest(selectedCancelRequest.address, account.address);
+      await cancelFriendRequest(fromAddress, account.address);
       
-      // Close confirmation and show success
-      setShowCancelConfirm(false);
-      setSelectedCancelRequest(null);
-      setSuccessMessage(`Friend request from ${selectedCancelRequest.name} has been cancelled`);
-      setShowSuccessAlert(true);
+      await alert.showInfoAlert({
+        title: `Friend request from ${fromName} has been cancelled`,
+        variant: "success",
+        icon: "success"
+      });
       
       // Refresh data
       const updatedRequests = await getFriendRequests();
@@ -305,31 +318,39 @@ export default function FriendsScreen() {
       
     } catch (error: any) {
       console.error("Error cancelling friend request:", error);
-      setShowCancelConfirm(false);
-      setSelectedCancelRequest(null);
       Alert.alert("Error", error.message || "Could not cancel friend request");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRemoveFriend = (friendAddress: string, friendName: string) => {
-    setSelectedFriend({ address: friendAddress, name: friendName });
-    setShowRemoveConfirm(true);
+  const handleRemoveFriend = async (friendAddress: string, friendName: string) => {
+    const confirmed = await alert.showConfirmAlert({
+      title: "Remove Friend",
+      message: `Remove ${friendName} from your friends list?`,
+      confirmText: "Remove",
+      cancelText: "Cancel",
+      destructive: true,
+      variant: "error"
+    });
+
+    if (confirmed) {
+      await handleConfirmRemoveFriend(friendAddress, friendName);
+    }
   };
 
-  const handleConfirmRemoveFriend = async () => {
-    if (!account?.address || !selectedFriend) return;
+  const handleConfirmRemoveFriend = async (friendAddress: string, friendName: string) => {
+    if (!account?.address) return;
 
     setIsProcessing(true);
     try {
-      await removeFriend(account.address, selectedFriend.address);
+      await removeFriend(account.address, friendAddress);
       
-      // Close confirmation and show success
-      setShowRemoveConfirm(false);
-      setSelectedFriend(null);
-      setSuccessMessage(`${selectedFriend.name} has been removed from your friends list`);
-      setShowSuccessAlert(true);
+      await alert.showInfoAlert({
+        title: `${friendName} has been removed from your friends list`,
+        variant: "success",
+        icon: "success"
+      });
       
       // Refresh data
       refetchFriends();
@@ -337,8 +358,6 @@ export default function FriendsScreen() {
       
     } catch (error: any) {
       console.error("Error removing friend:", error);
-      setShowRemoveConfirm(false);
-      setSelectedFriend(null);
       Alert.alert("Error", error.message || "Could not remove friend");
     } finally {
       setIsProcessing(false);
@@ -531,66 +550,8 @@ export default function FriendsScreen() {
           onSuccess={handleShowSuccessMessage}
         />
 
-        {/* Accept Friend Request Confirmation */}
-        <ConfirmationAlert
-          show={showAcceptConfirm}
-          onClose={() => {
-            if (!isProcessing) {
-              setShowAcceptConfirm(false);
-              setSelectedRequest(null);
-            }
-          }}
-          onConfirm={handleConfirmAcceptRequest}
-          title="Accept Friend Request"
-          message={selectedRequest ? `Do you want to accept ${selectedRequest.name}'s friend request?` : ''}
-          confirmText="Accept"
-          cancelText="Cancel"
-          confirmColor="#28a745"
-          isLoading={isProcessing}
-        />
-
-        {/* Remove Friend Confirmation */}
-        <ConfirmationAlert
-          show={showRemoveConfirm}
-          onClose={() => {
-            if (!isProcessing) {
-              setShowRemoveConfirm(false);
-              setSelectedFriend(null);
-            }
-          }}
-          onConfirm={handleConfirmRemoveFriend}
-          title="Remove Friend"
-          message={selectedFriend ? `Are you sure you want to remove ${selectedFriend.name} from your friends list?` : ''}
-          confirmText="Remove"
-          cancelText="Cancel"
-          confirmColor="#dc3545"
-          isLoading={isProcessing}
-        />
-
-        {/* Cancel Friend Request Confirmation */}
-        <ConfirmationAlert
-          show={showCancelConfirm}
-          onClose={() => {
-            if (!isProcessing) {
-              setShowCancelConfirm(false);
-              setSelectedCancelRequest(null);
-            }
-          }}
-          onConfirm={handleConfirmCancelRequest}
-          title="Cancel Friend Request"
-          message={selectedCancelRequest ? `Are you sure you want to cancel the friend request from ${selectedCancelRequest.name}?` : ''}
-          confirmText="Cancel Request"
-          cancelText="Keep Request"
-          confirmColor="#dc3545"
-          isLoading={isProcessing}
-        />
-
-        {/* Success Alert */}
-        <RewardAlert
-          show={showSuccessAlert}
-          onClose={() => setShowSuccessAlert(false)}
-          message={successMessage}
-        />
+        {/* Alert Renderer */}
+        <AlertRenderer alerts={alert._alerts} />
       </ThemedView>
     </ProtectedRoute>
   );

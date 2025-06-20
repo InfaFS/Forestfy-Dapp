@@ -11,3 +11,4 @@ export { useThemeColor } from "./useThemeColor";
 export { useUserNFTsWithListing } from "./useUserNFTsWithListing";
 export { useUserRegistryEvents } from "./useUserRegistryEvents";
 export { useUserWalletData } from "./useUserWalletData";
+export { useAlert } from "./useAlert";

@@ -8,7 +8,8 @@ import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { NFTContract, TokenContract } from "@/constants/thirdweb";
 import { claimFirstParcel, buyParcel } from "@/constants/api";
 import { useTrees } from "@/contexts/TreesContext";
-import { ParcelAlert } from "@/components/alerts";
+import { useAlert } from "@/hooks/useAlert";
+import { AlertRenderer } from "@/components/alerts/AlertRenderer";
 
 const PARCEL_IMAGES = {
 	0: require("@/assets/images/parcela.png"),
@@ -38,8 +39,7 @@ export default function TreesScreen() {
 	const [isBuyingParcel, setIsBuyingParcel] = useState(false);
 	const [currentParcel, setCurrentParcel] = useState(1);
 	const [tokenBalance, setTokenBalance] = useState<string>("0");
-	const [showParcelAlert, setShowParcelAlert] = useState(false);
-	const [parcelAlertMessage, setParcelAlertMessage] = useState("");
+	const alert = useAlert();
 	const account = useActiveAccount();
 	const floatAnim = useRef(new Animated.Value(0)).current;
 	const { refreshTrigger, triggerRefresh } = useTrees();
@@ -180,8 +180,11 @@ export default function TreesScreen() {
 			// Refrescar los datos del contrato para mostrar la nueva parcela
 			triggerRefresh();
 			
-			setParcelAlertMessage("Parcel claimed successfully!");
-			setShowParcelAlert(true);
+			await alert.showInfoAlert({
+				title: "Parcel claimed successfully!",
+				variant: "success",
+				icon: "success"
+			});
 		} catch (error) {
 			console.error("Error claiming first parcel:", error);
 			Alert.alert("Error", "Could not get the parcel. Please try again.");
@@ -207,8 +210,11 @@ export default function TreesScreen() {
 			// Refrescar los datos del contrato para mostrar la nueva parcela
 			triggerRefresh();
 			
-			setParcelAlertMessage("You bought a new parcel!");
-			setShowParcelAlert(true);
+			await alert.showInfoAlert({
+				title: "You bought a new parcel!",
+				variant: "success",
+				icon: "success"
+			});
 		} catch (error) {
 			console.error("Error buying parcel:", error);
 			Alert.alert("Error", "Could not buy the parcel. Please try again.");
@@ -334,15 +340,8 @@ export default function TreesScreen() {
 					)}
 				</ThemedView>
 				
-			{/* Parcel Alert */}
-				<ParcelAlert
-					show={showParcelAlert}
-					message={parcelAlertMessage}
-				onClose={() => {
-					setShowParcelAlert(false);
-					setParcelAlertMessage("");
-				}}
-				/>
+			{/* Alert Renderer */}
+			<AlertRenderer alerts={alert._alerts} />
 			</ThemedView>
 		</ProtectedRoute>
 	);

@@ -7,7 +7,8 @@ import { readContract } from "thirdweb";
 import { TokenContract, NFTContract } from "@/constants/thirdweb";
 import { LoadingAnimation, CoinAnimation, ClockAnimation } from "@/components/animations";
 import { MysteryTree, MysteryTreeRef } from "@/components/forest";
-import { SuccessAlert, RewardAlert, ConfirmTreeAlert, ConfirmRewardAlert, ResumeTimerAlert, SessionLostAlert } from "@/components/alerts";
+import { useAlert } from "@/hooks/useAlert";
+import { AlertRenderer } from "@/components/alerts/AlertRenderer";
 import { ProtectedRoute } from "@/components/auth";
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { useTrees } from "@/contexts/TreesContext";
@@ -149,7 +150,7 @@ export default function FocusScreen() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isMintingNFT, setIsMintingNFT] = useState(false);
 	const [isProcessingTokens, setIsProcessingTokens] = useState(false);
-	const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+	const alert = useAlert();
 	const [success, setSuccess] = useState<string | null>(null);
 	const [hasEnoughTokens, setHasEnoughTokens] = useState(false);
 	const [tokenBalance, setTokenBalance] = useState<string>("0");
@@ -169,14 +170,8 @@ export default function FocusScreen() {
 	const [timeLeft, setTimeLeft] = useState(0);
 	const [tokensToInvest, setTokensToInvest] = useState(1);
 	const [isInvesting, setIsInvesting] = useState(false);
-	const [showRewardAlert, setShowRewardAlert] = useState(false);
-	const [rewardAlertMessage, setRewardAlertMessage] = useState("");
-	const [showConfirmTreeAlert, setShowConfirmTreeAlert] = useState(false);
-	const [showConfirmRewardAlert, setShowConfirmRewardAlert] = useState(false);
 	const [rewardAlertType, setRewardAlertType] = useState<'tokens' | 'mint'>('tokens');
 	const [rewardAmount, setRewardAmount] = useState(0);
-	const [showResumeTimerAlert, setShowResumeTimerAlert] = useState(false);
-	const [showSessionLostAlert, setShowSessionLostAlert] = useState(false);
 	const [lostTokensAmount, setLostTokensAmount] = useState("");
 	
 	// Estados para manejo de AppState y contador de abandono
@@ -332,8 +327,18 @@ export default function FocusScreen() {
 			setIsShowingAbandonmentWarning(false);
 			setAbandonmentStartTime(null);
 			
-			// Show resume alert instead of automatically resuming
-			setShowResumeTimerAlert(true);
+					// Show resume alert instead of automatically resuming
+		alert.showConfirmAlert({
+			title: "Resume Timer",
+			message: "Do you want to resume your focus session?",
+			confirmText: "Resume",
+			cancelText: "Cancel",
+			variant: "success"
+		}).then((confirmed) => {
+			if (confirmed) {
+				handleResumeTimer();
+			}
+		});
 		}
 		
 		// If app returns to foreground but no paused timer (session lost)

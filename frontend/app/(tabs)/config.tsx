@@ -2,13 +2,13 @@ import React from "react";
 import { View, Text, StyleSheet, Alert, Platform, StatusBar, TouchableOpacity, Image, ScrollView, DeviceEventEmitter } from "react-native";
 
 import { ThemedButton, ThemedView, ThemedText } from "@/components/ui";
-import { RewardAlert, ConfirmParcelAlert } from "@/components/alerts";
 import { useState, useEffect, useCallback } from "react";
 import { useReadContract, useActiveAccount, useDisconnect, useActiveWallet } from "thirdweb/react";
 import { TokenContract, UserRegistryContract } from "@/constants/thirdweb";
 import { reclaimReward, buyParcel, changeName } from "@/constants/api";
 import { useTrees } from "@/contexts/TreesContext";
-import { ConfirmDisconnectAlert, RegisterUserAlert, ChangeNameAlert } from '@/components/alerts';
+import { useAlert } from "@/hooks/useAlert";
+import { AlertRenderer } from "@/components/alerts/AlertRenderer";
 import { router } from 'expo-router';
 
 export default function ConfigScreen() {
@@ -20,15 +20,7 @@ export default function ConfigScreen() {
 	const [localHasClaimed, setLocalHasClaimed] = useState(false);
 	const [tokenBalance, setTokenBalance] = useState<string>("0");
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
-	const [showRewardAlert, setShowRewardAlert] = useState(false);
-	const [rewardAlertMessage, setRewardAlertMessage] = useState("");
-	const [showConfirmParcelAlert, setShowConfirmParcelAlert] = useState(false);
-	const [showConfirmDisconnectAlert, setShowConfirmDisconnectAlert] = useState(false);
-	const [showRegisterUserAlert, setShowRegisterUserAlert] = useState(false);
-	const [showChangeNameAlert, setShowChangeNameAlert] = useState(false);
-	const [parcelAlertType, setParcelAlertType] = useState<'claim' | 'buy'>('claim');
-	const [parcelAlertMessage, setParcelAlertMessage] = useState('');
-	const [parcelAlertAmount, setParcelAlertAmount] = useState(0);
+	const alert = useAlert();
 	const [isConnected, setIsConnected] = useState(false);
 	const [isConnecting, setIsConnecting] = useState(false);
 	const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -105,10 +97,12 @@ export default function ConfigScreen() {
 		setIsLoading(true);
 		try {
 			await reclaimReward(account.address);
-			setLocalHasClaimed(true); // Actualizar el estado local inmediatamente
-			setRewardAlertMessage("Reward claimed successfully");
-			setShowRewardAlert(true);
-			// Refrescar el balance después de reclamar la recompensa
+			setLocalHasClaimed(true);
+			await alert.showInfoAlert({
+				title: "Reward claimed successfully",
+				variant: "success",
+				icon: "coin"
+			});
 			setRefreshTrigger(prev => prev + 1);
 		} catch (error) {
 			console.error("Error al reclamar recompensa:", error);
@@ -129,7 +123,17 @@ export default function ConfigScreen() {
 			return;
 		}
 
-		setShowConfirmParcelAlert(true);
+		const confirmed = await alert.showConfirmAlert({
+			title: "Buy Parcel",
+			message: "Are you sure you want to buy a parcel for 5 tokens?",
+			confirmText: "Buy Parcel",
+			cancelText: "Cancel",
+			variant: "success"
+		});
+		
+		if (confirmed) {
+			await handleConfirmBuyParcel();
+		}
 	};
 
 	const handleConfirmBuyParcel = async () => {
@@ -138,9 +142,11 @@ export default function ConfigScreen() {
 		setIsBuyingParcel(true);
 		try {
 			await buyParcel(account.address);
-			setRewardAlertMessage("You bought a new parcel!");
-			setShowRewardAlert(true);
-			// Refrescar el balance después de comprar la parcela
+			await alert.showInfoAlert({
+				title: "You bought a new parcel!",
+				variant: "success",
+				icon: "success"
+			});
 			triggerRefresh();
 		} catch (error) {
 			console.error("Error buying parcel:", error);
@@ -150,8 +156,19 @@ export default function ConfigScreen() {
 		}
 	};
 
-	const handleDisconnect = () => {
-		setShowConfirmDisconnectAlert(true);
+	const handleDisconnect = async () => {
+		const confirmed = await alert.showConfirmAlert({
+			title: "Disconnect Wallet",
+			message: "Are you sure you want to disconnect your wallet?",
+			confirmText: "Disconnect",
+			cancelText: "Cancel",
+			destructive: true,
+			variant: "error"
+		});
+		
+		if (confirmed) {
+			await handleConfirmDisconnect();
+		}
 	};
 
 	const handleConfirmDisconnect = async () => {
@@ -174,20 +191,50 @@ export default function ConfigScreen() {
 		}
 	};
 
-	const handleRegisterUser = () => {
-		setShowRegisterUserAlert(true);
+	const handleRegisterUser = async () => {
+		const username = await alert.showInputAlert({
+			title: "Register User",
+			message: "Enter your username to register in Forestfy",
+			placeholder: "Username",
+			maxLength: 50,
+			submitText: "Register",
+			cancelText: "Cancel",
+			validation: (value) => {
+				if (value.length < 3) return "Username must be at least 3 characters";
+				return null;
+			}
+		});
+		
+		if (username) {
+			await handleConfirmRegisterUser(username);
+		}
 	};
 
-	const handleChangeName = () => {
-		setShowChangeNameAlert(true);
+	const handleChangeName = async () => {
+		const currentName = userInfo && userInfo[2] ? userInfo[0] : '';
+		const newName = await alert.showInputAlert({
+			title: "Change Name",
+			message: `Current name: ${currentName}`,
+			placeholder: "New name",
+			maxLength: 50,
+			submitText: "Change Name",
+			cancelText: "Cancel",
+			validation: (value) => {
+				if (value.length < 3) return "Name must be at least 3 characters";
+				if (value === currentName) return "New name must be different from current name";
+				return null;
+			}
+		});
+		
+		if (newName) {
+			await handleConfirmChangeName(newName);
+		}
 	};
 
 	const handleConfirmRegisterUser = async (username: string) => {
-		// Refrescar el estado de registro del usuario y el balance
 		try {
 			await refetchUserRegistration();
 			setRefreshTrigger(prev => prev + 1);
-			// Emitir evento para refrescar datos sociales
 			DeviceEventEmitter.emit('refreshSocialData');
 			console.log("User registered successfully:", username);
 		} catch (error) {
@@ -202,22 +249,16 @@ export default function ConfigScreen() {
 		}
 
 		try {
-			// Call the API to change name
 			await changeName(account.address, newName);
-
-			// Success
-			setRewardAlertMessage(`Name changed to "${newName}" successfully!`);
-			setShowRewardAlert(true);
-			
-			// Refresh user data
-			await refetchUserRegistration();
+			await alert.showInfoAlert({
+				title: `Name changed to "${newName}" successfully!`,
+				variant: "success",
+				icon: "success"
+			});
 			setRefreshTrigger(prev => prev + 1);
-			DeviceEventEmitter.emit('refreshSocialData');
-			
-			console.log("Name changed successfully:", newName);
-		} catch (error: any) {
+		} catch (error) {
 			console.error("Error changing name:", error);
-			Alert.alert("Error", error.message || "Could not change name. Please try again.");
+			Alert.alert("Error", "Could not change name. Please try again.");
 		}
 	};
 
@@ -346,43 +387,10 @@ export default function ConfigScreen() {
 				</ThemedText>
 			)}
 
-			{/* Reward Alert */}
-			<RewardAlert
-				show={showRewardAlert}
-				message={rewardAlertMessage}
-				onClose={() => {
-					setShowRewardAlert(false);
-					setRewardAlertMessage("");
-				}}
-			/>
 
-			{/* Confirm Parcel Alert */}
-			<ConfirmParcelAlert
-				show={showConfirmParcelAlert}
-				onClose={() => setShowConfirmParcelAlert(false)}
-				onConfirm={handleConfirmBuyParcel}
-			/>
 
-			<ConfirmDisconnectAlert
-				show={showConfirmDisconnectAlert}
-				onClose={() => setShowConfirmDisconnectAlert(false)}
-				onConfirm={handleConfirmDisconnect}
-			/>
-
-			{/* Register User Alert */}
-			<RegisterUserAlert
-				show={showRegisterUserAlert}
-				onClose={() => setShowRegisterUserAlert(false)}
-				onRegister={handleConfirmRegisterUser}
-			/>
-
-			{/* Change Name Alert */}
-			<ChangeNameAlert
-				show={showChangeNameAlert}
-				onClose={() => setShowChangeNameAlert(false)}
-				onChangeName={handleConfirmChangeName}
-				currentName={userInfo && userInfo[2] ? userInfo[0] : ''}
-			/>
+			{/* Alert Renderer */}
+			<AlertRenderer alerts={alert._alerts} />
 		</ThemedView>
 	);
 }
