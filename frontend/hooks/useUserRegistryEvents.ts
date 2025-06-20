@@ -2,6 +2,9 @@ import { useEffect, useRef } from "react";
 import { useContractEvents, useActiveAccount } from "thirdweb/react";
 import { prepareEvent } from "thirdweb";
 import { UserRegistryContract } from "@/constants/thirdweb";
+import { useContractEvents as useEventProcessor } from "./useContractEvents";
+import { AllUserRegistryEvents } from "../types/events";
+import { appEventEmitter } from "../utils/eventEmitter";
 
 interface UserRegistryEventsHookProps {
   onFriendRequestSent?: (from: string, to: string) => void;
@@ -9,6 +12,7 @@ interface UserRegistryEventsHookProps {
   onFriendRequestCancelled?: (from: string, to: string) => void;
   onFriendAdded?: (user1: string, user2: string) => void;
   onFriendRemoved?: (user1: string, user2: string) => void;
+  enabled?: boolean;
 }
 
 export function useUserRegistryEvents({
@@ -17,12 +21,10 @@ export function useUserRegistryEvents({
   onFriendRequestCancelled,
   onFriendAdded,
   onFriendRemoved,
+  enabled = true,
 }: UserRegistryEventsHookProps = {}) {
   const activeAccount = useActiveAccount();
   const userAddress = activeAccount?.address?.toLowerCase() || "";
-
-  // Referencias para rastrear eventos ya procesados
-  const processedEvents = useRef(new Set<string>());
   const lastEventCount = useRef(0);
 
   // Preparar eventos del UserRegistry
@@ -51,7 +53,125 @@ export function useUserRegistryEvents({
       "event FriendRemoved(address indexed user1, address indexed user2, uint256 timestamp)",
   });
 
-  // Escuchar eventos del UserRegistry
+  // Initialize event processor
+  const eventProcessor = useEventProcessor({
+    onEvent: async (event: AllUserRegistryEvents) => {
+      console.log(`UserRegistry Event: ${event.eventName}`, event);
+
+      switch (event.eventName) {
+        case "FriendRequestSent":
+          {
+            const { from, to } = event.args;
+
+            // Emit internal event for NotificationContext to handle
+            appEventEmitter.emit({
+              type: "USER_REGISTRY_EVENT",
+              data: {
+                eventType: "FriendRequestSent",
+                from,
+                to,
+              },
+            });
+
+            if (onFriendRequestSent && from && to) {
+              onFriendRequestSent(from, to);
+            }
+          }
+          break;
+
+        case "FriendRequestAccepted":
+          {
+            const { from, to } = event.args;
+
+            // Emit internal event for NotificationContext to handle
+            appEventEmitter.emit({
+              type: "USER_REGISTRY_EVENT",
+              data: {
+                eventType: "FriendRequestAccepted",
+                from,
+                to,
+              },
+            });
+
+            if (onFriendRequestAccepted && from && to) {
+              onFriendRequestAccepted(from, to);
+            }
+          }
+          break;
+
+        case "FriendRequestCancelled":
+          {
+            const { from, to } = event.args;
+
+            // Emit internal event for NotificationContext to handle
+            appEventEmitter.emit({
+              type: "USER_REGISTRY_EVENT",
+              data: {
+                eventType: "FriendRequestCancelled",
+                from,
+                to,
+              },
+            });
+
+            if (onFriendRequestCancelled && from && to) {
+              onFriendRequestCancelled(from, to);
+            }
+          }
+          break;
+
+        case "FriendAdded":
+          {
+            const { user1, user2 } = event.args;
+
+            // Emit internal event for NotificationContext to handle
+            appEventEmitter.emit({
+              type: "USER_REGISTRY_EVENT",
+              data: {
+                eventType: "FriendAdded",
+                user1,
+                user2,
+              },
+            });
+
+            if (onFriendAdded && user1 && user2) {
+              onFriendAdded(user1, user2);
+            }
+          }
+          break;
+
+        case "FriendRemoved":
+          {
+            const { user1, user2 } = event.args;
+
+            // Emit internal event for NotificationContext to handle
+            appEventEmitter.emit({
+              type: "USER_REGISTRY_EVENT",
+              data: {
+                eventType: "FriendRemoved",
+                user1,
+                user2,
+              },
+            });
+
+            if (onFriendRemoved && user1 && user2) {
+              onFriendRemoved(user1, user2);
+            }
+          }
+          break;
+
+        default:
+          console.warn("Unknown UserRegistry event:", (event as any).eventName);
+      }
+    },
+    enabled,
+    config: {
+      recentTimeWindow: 300000, // 5 minutes
+      maxProcessedEvents: 500,
+      autoCleanup: true,
+    },
+  });
+
+  // Listen to thirdweb events
   const { data: userRegistryEvents } = useContractEvents({
     contract: UserRegistryContract,
     events: [
@@ -63,122 +183,46 @@ export function useUserRegistryEvents({
     ],
   });
 
-  // Procesar solo eventos nuevos
+  // Process new events
   useEffect(() => {
     if (!userRegistryEvents || userRegistryEvents.length === 0) return;
 
-    // Solo procesar si hay nuevos eventos
+    // Only process if there are new events
     if (userRegistryEvents.length <= lastEventCount.current) return;
 
-    // Procesar solo los eventos más recientes (últimos 5 minutos)
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-    // Procesar solo eventos nuevos (que no hemos visto antes)
+    // Process only new events (that we haven't seen before)
     const newEvents = userRegistryEvents.slice(lastEventCount.current);
 
     newEvents.forEach((event) => {
-      // Crear ID único para el evento
-      const eventId = `${event.eventName}-${event.transactionHash}-${event.logIndex}`;
-
-      // Skip si ya procesamos este evento
-      if (processedEvents.current.has(eventId)) return;
-
-      // Verificar que el evento sea reciente (timestamp del blockchain)
-      const eventTimestamp = event.args?.timestamp
-        ? Number(event.args.timestamp) * 1000
-        : Date.now();
-      if (eventTimestamp < fiveMinutesAgo) return;
-
-      // Marcar como procesado
-      processedEvents.current.add(eventId);
-
       switch (event.eventName) {
         case "FriendRequestSent":
-          {
-            const { from, to } = event.args as {
-              from: string;
-              to: string;
-            };
-
-            if (onFriendRequestSent && from && to) {
-              onFriendRequestSent(from, to);
-            }
-          }
+          eventProcessor.processEvent(event, "FriendRequestSent");
           break;
-
         case "FriendRequestAccepted":
-          {
-            const { from, to } = event.args as {
-              from: string;
-              to: string;
-            };
-
-            if (onFriendRequestAccepted && from && to) {
-              onFriendRequestAccepted(from, to);
-            }
-          }
+          eventProcessor.processEvent(event, "FriendRequestAccepted");
           break;
-
         case "FriendRequestCancelled":
-          {
-            const { from, to } = event.args as {
-              from: string;
-              to: string;
-            };
-
-            if (onFriendRequestCancelled && from && to) {
-              onFriendRequestCancelled(from, to);
-            }
-          }
+          eventProcessor.processEvent(event, "FriendRequestCancelled");
           break;
-
         case "FriendAdded":
-          {
-            const { user1, user2 } = event.args as {
-              user1: string;
-              user2: string;
-            };
-
-            if (onFriendAdded && user1 && user2) {
-              onFriendAdded(user1, user2);
-            }
-          }
+          eventProcessor.processEvent(event, "FriendAdded");
           break;
-
         case "FriendRemoved":
-          {
-            const { user1, user2 } = event.args as {
-              user1: string;
-              user2: string;
-            };
-
-            if (onFriendRemoved && user1 && user2) {
-              onFriendRemoved(user1, user2);
-            }
-          }
+          eventProcessor.processEvent(event, "FriendRemoved");
           break;
       }
     });
 
-    // Actualizar contador de eventos procesados
+    // Update processed count
     lastEventCount.current = userRegistryEvents.length;
-
-    // Limpiar eventos antiguos del Set para evitar memory leaks
-    if (processedEvents.current.size > 100) {
-      const eventsArray = Array.from(processedEvents.current);
-      processedEvents.current = new Set(eventsArray.slice(-50)); // Mantener solo los últimos 50
-    }
-  }, [
-    userRegistryEvents,
-    onFriendRequestSent,
-    onFriendRequestAccepted,
-    onFriendRequestCancelled,
-    onFriendAdded,
-    onFriendRemoved,
-  ]);
+  }, [userRegistryEvents, eventProcessor.processEvent]);
 
   return {
-    userRegistryEvents,
+    // Backward compatibility
+    userRegistryEvents: eventProcessor.recentEvents,
     userAddress,
+
+    // New functionality
+    ...eventProcessor,
   };
 }

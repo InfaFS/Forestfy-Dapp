@@ -3,8 +3,7 @@ import { useActiveAccount, useReadContract } from 'thirdweb/react';
 import { DeviceEventEmitter } from 'react-native';
 import { NFTContract, UserRegistryContract } from '@/constants/thirdweb';
 import { readContract } from 'thirdweb';
-import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
-import { useUserRegistryEvents } from '@/hooks/useUserRegistryEvents';
+import { appEventEmitter, AppEvent } from '@/utils/eventEmitter';
 
 export interface Notification {
   id: string;
@@ -179,174 +178,184 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }, 3000);
   };
 
-  // Listen to marketplace events - SOLO para ventas del usuario
-  useMarketplaceEvents({
-    onNFTListed: () => {
-      // No mostrar notificación para listar NFTs
-    },
-    onNFTUnlisted: () => {
-      // No mostrar notificación para deslistar NFTs
-    },
-    onNFTSold: (tokenId, seller, buyer, price) => {
+  // Listen to internal app events
+  useEffect(() => {
+    const handleAppEvent = async (event: AppEvent) => {
       if (!activeAccount?.address) return;
       
       const userAddress = activeAccount.address.toLowerCase();
-      const sellerAddress = seller.toLowerCase();
-      
-      // SOLO mostrar notificación cuando el usuario vende un NFT
-      if (sellerAddress === userAddress) {
-        // Crear un ID único para esta transacción específica
-        const transactionId = `${tokenId}-${sellerAddress}-${buyer.toLowerCase()}-${price}`;
-        
-        // Verificar si ya procesamos esta transacción
-        if (processedTransactions.has(transactionId)) {
-          console.log('🔄 Transacción ya procesada, evitando duplicado:', transactionId);
-          return;
-        }
-        
-        // Marcar como procesada
-        setProcessedTransactions(prev => new Set([...prev, transactionId]));
-        
-        // Formatear el precio correctamente
-        const formattedPrice = formatTokenAmount(Number(price) / 1e18);
-        
-        console.log('🎉 Agregando notificación de venta:', {
-          tokenId: tokenId.toString(),
-          price: formattedPrice,
-          seller,
-          buyer
-        });
-        
-        addNotification({
-          type: 'nft_sold',
-          title: 'NFT Sold!',
-          message: `Your NFT #${tokenId} was sold for ${formattedPrice} FTK`,
-          tokenId: tokenId.toString(),
-          price: formattedPrice,
-          buyer,
-          seller,
-          onDismiss: () => {
-            // Actualizar balance del vendedor cuando acepta la notificación
-            console.log('🔄 Actualizando balance del vendedor después de venta confirmada...');
-            updateSellerBalance();
-          },
-        });
-      }
-      // No mostrar notificación cuando el usuario compra un NFT
-    },
-  });
 
-  // Listen to UserRegistry events - SOLO para eventos dirigidos al usuario
-  useUserRegistryEvents({
-    onFriendRequestSent: async (from, to) => {
-      if (!activeAccount?.address) return;
-      
-      const userAddress = activeAccount.address.toLowerCase();
-      const toAddress = to.toLowerCase();
-      
-      // SOLO mostrar notificación cuando el usuario RECIBE una solicitud
-      if (toAddress === userAddress) {
-        // Crear un ID único para esta solicitud específica
-        const requestId = `${from.toLowerCase()}-${toAddress}`;
-        
-        // Verificar si ya procesamos esta solicitud
-        if (processedTransactions.has(requestId)) {
-          console.log('🔄 Solicitud ya procesada, evitando duplicado:', requestId);
-          return;
-        }
-        
-        // Marcar como procesada
-        setProcessedTransactions(prev => new Set([...prev, requestId]));
-        
-        // Obtener el nombre del usuario que envió la solicitud
-        const fromUserName = await getUserName(from);
-        
-        console.log('👫 Agregando notificación de solicitud de amistad:', {
-          from,
-          to,
-          fromUserName
-        });
-        
-        addNotification({
-          type: 'friend_request_received',
-          title: 'New Friend Request!',
-          message: `${fromUserName} wants to be your friend`,
-          fromUser: from,
-          toUser: to,
-          onDismiss: () => {
-            // Actualizar datos sociales cuando acepta la notificación
-            console.log('🔄 Actualizando datos sociales después de notificación de solicitud...');
-            updateSocialData();
-          },
-        });
+      switch (event.type) {
+        case 'MARKETPLACE_EVENT':
+          {
+            const { eventType, tokenId, seller, buyer, price } = event.data;
+            
+            if (eventType === 'NFTSold') {
+              const sellerAddress = seller.toLowerCase();
+              
+              // SOLO mostrar notificación cuando el usuario vende un NFT
+              if (sellerAddress === userAddress) {
+                // Crear un ID único para esta transacción específica
+                const transactionId = `${tokenId}-${sellerAddress}-${buyer?.toLowerCase()}-${price}`;
+                
+                // Verificar si ya procesamos esta transacción
+                if (processedTransactions.has(transactionId)) {
+                  console.log('🔄 Transacción ya procesada, evitando duplicado:', transactionId);
+                  return;
+                }
+                
+                // Marcar como procesada
+                setProcessedTransactions(prev => new Set([...prev, transactionId]));
+                
+                // Formatear el precio correctamente
+                const formattedPrice = formatTokenAmount(Number(price));
+                
+                console.log('🎉 Agregando notificación de venta:', {
+                  tokenId,
+                  price: formattedPrice,
+                  seller,
+                  buyer
+                });
+                
+                addNotification({
+                  type: 'nft_sold',
+                  title: 'NFT Sold!',
+                  message: `Your NFT #${tokenId} was sold for ${formattedPrice} FTK`,
+                  tokenId,
+                  price: formattedPrice,
+                  buyer,
+                  seller,
+                  onDismiss: () => {
+                    // Actualizar balance del vendedor cuando acepta la notificación
+                    console.log('🔄 Actualizando balance del vendedor después de venta confirmada...');
+                    updateSellerBalance();
+                  },
+                });
+              }
+            }
+          }
+          break;
+
+        case 'USER_REGISTRY_EVENT':
+          {
+            const { eventType, from, to, user1, user2 } = event.data;
+            
+            switch (eventType) {
+              case 'FriendRequestSent':
+                if (from && to) {
+                  const toAddress = to.toLowerCase();
+                  
+                  // SOLO mostrar notificación cuando el usuario RECIBE una solicitud
+                  if (toAddress === userAddress) {
+                    // Crear un ID único para esta solicitud específica
+                    const requestId = `${from.toLowerCase()}-${toAddress}`;
+                    
+                    // Verificar si ya procesamos esta solicitud
+                    if (processedTransactions.has(requestId)) {
+                      console.log('🔄 Solicitud ya procesada, evitando duplicado:', requestId);
+                      return;
+                    }
+                    
+                    // Marcar como procesada
+                    setProcessedTransactions(prev => new Set([...prev, requestId]));
+                    
+                    // Obtener el nombre del usuario que envió la solicitud
+                    const fromUserName = await getUserName(from);
+                    
+                    console.log('👫 Agregando notificación de solicitud de amistad:', {
+                      from,
+                      to,
+                      fromUserName
+                    });
+                    
+                    addNotification({
+                      type: 'friend_request_received',
+                      title: 'New Friend Request!',
+                      message: `${fromUserName} wants to be your friend`,
+                      fromUser: from,
+                      toUser: to,
+                      onDismiss: () => {
+                        // Actualizar datos sociales cuando acepta la notificación
+                        console.log('🔄 Actualizando datos sociales después de notificación de solicitud...');
+                        updateSocialData();
+                      },
+                    });
+                  }
+                }
+                break;
+
+              case 'FriendRequestAccepted':
+                if (from && to) {
+                  const fromAddress = from.toLowerCase();
+                  const toAddress = to.toLowerCase();
+                  
+                  // Actualizar datos sociales para cualquier usuario involucrado en la aceptación
+                  if (fromAddress === userAddress || toAddress === userAddress) {
+                    // Siempre actualizar datos sociales cuando el usuario actual está involucrado
+                    console.log('🔄 Actualizando datos sociales para usuario involucrado en aceptación de amistad...');
+                    updateSocialData();
+                  }
+                  
+                  // SOLO mostrar notificación cuando el usuario que ENVIÓ la solicitud es notificado de la aceptación
+                  if (fromAddress === userAddress) {
+                    // Crear un ID único para esta aceptación específica
+                    const acceptedId = `accepted-${fromAddress}-${to.toLowerCase()}`;
+                    
+                    // Verificar si ya procesamos esta aceptación
+                    if (processedTransactions.has(acceptedId)) {
+                      console.log('🔄 Aceptación ya procesada, evitando duplicado:', acceptedId);
+                      return;
+                    }
+                    
+                    // Marcar como procesada
+                    setProcessedTransactions(prev => new Set([...prev, acceptedId]));
+                    
+                    // Obtener el nombre del usuario que aceptó la solicitud
+                    const toUserName = await getUserName(to);
+                    
+                    console.log('🎉 Agregando notificación de aceptación de amistad:', {
+                      from,
+                      to,
+                      toUserName
+                    });
+                    
+                    addNotification({
+                      type: 'friend_request_accepted',
+                      title: 'Friend Request Accepted!',
+                      message: `${toUserName} accepted your friend request`,
+                      fromUser: from,
+                      toUser: to,
+                      onDismiss: () => {
+                        // Actualizar datos sociales cuando acepta la notificación
+                        console.log('🔄 Actualizando datos sociales después de notificación de aceptación...');
+                        updateSocialData();
+                      },
+                    });
+                  }
+                }
+                break;
+
+              case 'FriendAdded':
+                if (user1 && user2) {
+                  const user1Address = user1.toLowerCase();
+                  const user2Address = user2.toLowerCase();
+                  
+                  // Actualizar datos sociales si el usuario actual está involucrado en la adición de amistad
+                  if (user1Address === userAddress || user2Address === userAddress) {
+                    console.log('🔄 Actualizando datos sociales para usuario involucrado en adición de amistad...');
+                    updateSocialData();
+                  }
+                }
+                break;
+            }
+          }
+          break;
       }
-    },
-    onFriendRequestAccepted: async (from, to) => {
-      if (!activeAccount?.address) return;
-      
-      const userAddress = activeAccount.address.toLowerCase();
-      const fromAddress = from.toLowerCase();
-      const toAddress = to.toLowerCase();
-      
-      // Actualizar datos sociales para cualquier usuario involucrado en la aceptación
-      if (fromAddress === userAddress || toAddress === userAddress) {
-        // Siempre actualizar datos sociales cuando el usuario actual está involucrado
-        console.log('🔄 Actualizando datos sociales para usuario involucrado en aceptación de amistad...');
-        updateSocialData();
-      }
-      
-      // SOLO mostrar notificación cuando el usuario que ENVIÓ la solicitud es notificado de la aceptación
-      if (fromAddress === userAddress) {
-        // Crear un ID único para esta aceptación específica
-        const acceptedId = `accepted-${fromAddress}-${to.toLowerCase()}`;
-        
-        // Verificar si ya procesamos esta aceptación
-        if (processedTransactions.has(acceptedId)) {
-          console.log('🔄 Aceptación ya procesada, evitando duplicado:', acceptedId);
-          return;
-        }
-        
-        // Marcar como procesada
-        setProcessedTransactions(prev => new Set([...prev, acceptedId]));
-        
-        // Obtener el nombre del usuario que aceptó la solicitud
-        const toUserName = await getUserName(to);
-        
-        console.log('🎉 Agregando notificación de aceptación de amistad:', {
-          from,
-          to,
-          toUserName
-        });
-        
-        addNotification({
-          type: 'friend_request_accepted',
-          title: 'Friend Request Accepted!',
-          message: `${toUserName} accepted your friend request`,
-          fromUser: from,
-          toUser: to,
-          onDismiss: () => {
-            // Actualizar datos sociales cuando acepta la notificación
-            console.log('🔄 Actualizando datos sociales después de notificación de aceptación...');
-            updateSocialData();
-          },
-        });
-      }
-    },
-    onFriendAdded: async (user1, user2) => {
-      if (!activeAccount?.address) return;
-      
-      const userAddress = activeAccount.address.toLowerCase();
-      const user1Address = user1.toLowerCase();
-      const user2Address = user2.toLowerCase();
-      
-      // Actualizar datos sociales si el usuario actual está involucrado en la adición de amistad
-      if (user1Address === userAddress || user2Address === userAddress) {
-        console.log('🔄 Actualizando datos sociales para usuario involucrado en adición de amistad...');
-        updateSocialData();
-      }
-    },
-    // No mostrar notificaciones para cancelaciones o eliminaciones de amigos
-  });
+    };
+
+    const unsubscribe = appEventEmitter.subscribe(handleAppEvent);
+    return unsubscribe;
+     }, [activeAccount?.address, addNotification, updateSellerBalance, updateSocialData]);
 
   // Limpiar transacciones procesadas cada 5 minutos para evitar memory leaks
   useEffect(() => {
