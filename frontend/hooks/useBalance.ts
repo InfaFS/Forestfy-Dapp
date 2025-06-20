@@ -2,8 +2,9 @@ import { useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 
 export function useBalance() {
-  const { balance, isLoadingBalance, refreshBalance } = useWallet();
+  const { balance, refreshBalance } = useWallet();
   const [localBalance, setLocalBalance] = useState<string>(balance);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Update local balance when context balance changes
   useState(() => {
@@ -11,7 +12,9 @@ export function useBalance() {
   });
 
   const updateBalanceAfterTransaction = useCallback(async () => {
+    setIsLoading(true);
     await refreshBalance();
+    setIsLoading(false);
   }, [refreshBalance]);
 
   const hasEnoughBalance = useCallback(
@@ -28,7 +31,7 @@ export function useBalance() {
 
   return {
     balance: localBalance,
-    isLoading: isLoadingBalance,
+    isLoading,
     refreshBalance,
     updateBalanceAfterTransaction,
     hasEnoughBalance,

@@ -1,32 +1,22 @@
 import { useState, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { mintTree, reclaimReward } from "@/constants/api";
-import { useNotification } from "@/contexts/NotificationContext";
 import { useWallet } from "@/contexts/WalletContext";
 
 export function useNFTOperations() {
   const account = useActiveAccount();
-  const { showNotification } = useNotification();
-  const { refreshBalance, refreshClaimStatus } = useWallet();
+  const { refreshBalance } = useWallet();
   const [isLoading, setIsLoading] = useState(false);
 
   const mintNewTree = useCallback(
     async (amount: number) => {
       if (!account?.address) {
-        showNotification({
-          type: "error",
-          title: "Error",
-          message: "Wallet no conectada",
-        });
+        console.log("❌ Error: Wallet no conectada");
         return false;
       }
 
       if (amount <= 0) {
-        showNotification({
-          type: "error",
-          title: "Error",
-          message: "Cantidad debe ser mayor a 0",
-        });
+        console.log("❌ Error: Cantidad debe ser mayor a 0");
         return false;
       }
 
@@ -37,35 +27,21 @@ export function useNFTOperations() {
         // Refresh balance after successful mint
         await refreshBalance();
 
-        showNotification({
-          type: "success",
-          title: "¡Árbol plantado exitosamente!",
-          duration: 2000,
-        });
-
+        console.log("✅ ¡Árbol plantado exitosamente!");
         return true;
       } catch (error) {
-        console.error("Error minting tree:", error);
-        showNotification({
-          type: "error",
-          title: "Error",
-          message: "No se pudo plantar el árbol",
-        });
+        console.error("❌ Error minting tree:", error);
         return false;
       } finally {
         setIsLoading(false);
       }
     },
-    [account?.address, showNotification, refreshBalance]
+    [account?.address, refreshBalance]
   );
 
   const claimReward = useCallback(async () => {
     if (!account?.address) {
-      showNotification({
-        type: "error",
-        title: "Error",
-        message: "Wallet no conectada",
-      });
+      console.log("❌ Error: Wallet no conectada");
       return false;
     }
 
@@ -73,27 +49,18 @@ export function useNFTOperations() {
       setIsLoading(true);
       await reclaimReward(account.address);
 
-      // Refresh both balance and claim status
-      await Promise.all([refreshBalance(), refreshClaimStatus()]);
+      // Refresh balance after successful claim
+      await refreshBalance();
 
-      showNotification({
-        type: "success",
-        title: "Recompensa reclamada exitosamente",
-      });
-
+      console.log("✅ Recompensa reclamada exitosamente");
       return true;
     } catch (error) {
-      console.error("Error claiming reward:", error);
-      showNotification({
-        type: "error",
-        title: "Error",
-        message: "No se pudo reclamar la recompensa",
-      });
+      console.error("❌ Error claiming reward:", error);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, showNotification, refreshBalance, refreshClaimStatus]);
+  }, [account?.address, refreshBalance]);
 
   return {
     isLoading,

@@ -1,3 +1,6 @@
+import { NFTService, MarketplaceService, UserService } from "../services/api";
+
+// Legacy API endpoints for backward compatibility
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 export const API_ENDPOINTS = {
@@ -18,125 +21,33 @@ export const API_ENDPOINTS = {
   cancelFriendRequest: `${API_BASE_URL}/cancel-friend-request`,
 } as const;
 
+// ===================================================================
+// LEGACY FUNCTION WRAPPERS (for backward compatibility)
+// These maintain the exact same API as before but use the new services
+// ===================================================================
+
 export const reclaimReward = async (address: string) => {
-  const response = await fetch(API_ENDPOINTS.reclaimReward, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ address }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Error al reclamar la recompensa");
-  }
-
-  return response.json();
+  return NFTService.reclaimReward(address);
 };
 
 export const mintTree = async (address: string, amount: number) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.mintTree, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, amount }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al mintear el árbol");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return NFTService.mintTree(address, amount);
 };
 
 export const reduceBalance = async (address: string, amount: number) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.reduceBalance, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, amount }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al reducir el balance");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return NFTService.reduceBalance(address, amount);
 };
 
 export const claimStaking = async (address: string, amount: number) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.claimStaking, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, amount }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al reclamar el staking");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return NFTService.claimStaking(address, amount);
 };
 
 export const claimFirstParcel = async (address: string) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.claimFirstParcel, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al reclamar la primera parcela");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return NFTService.claimFirstParcel(address);
 };
 
 export const buyParcel = async (address: string) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.buyParcel, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al comprar la parcela");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return NFTService.buyParcel(address);
 };
 
 export const buyNFT = async (
@@ -147,40 +58,14 @@ export const buyNFT = async (
   userTokenCount: number,
   nftPrice: number
 ) => {
-  try {
-    // Verificar si el balance del usuario es suficiente
-    if (userBalance < nftPrice) {
-      throw new Error(
-        `Insufficient balance. You need ${nftPrice} FTK but only have ${userBalance} FTK`
-      );
-    }
-
-    // Verificar si el usuario tiene espacio para más árboles (16 árboles por parcela)
-    const maxTrees = userParcels * 16;
-    if (userTokenCount >= maxTrees) {
-      throw new Error(
-        `No space for more trees. You need more parcels (max: ${maxTrees} trees)`
-      );
-    }
-
-    const response = await fetch(API_ENDPOINTS.buyNFT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, tokenId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error purchasing NFT");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return MarketplaceService.buyNFT(
+    address,
+    tokenId,
+    userBalance,
+    userParcels,
+    userTokenCount,
+    nftPrice
+  );
 };
 
 export const listNFT = async (
@@ -188,195 +73,45 @@ export const listNFT = async (
   tokenId: string,
   precio: number
 ) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.listNFT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, tokenId, precio }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error listing NFT");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return MarketplaceService.listNFT(address, tokenId, precio);
 };
 
 export const unlistNFT = async (address: string, tokenId: string) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.unlistNFT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ address, tokenId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error unlisting NFT");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return MarketplaceService.unlistNFT(address, tokenId);
 };
 
 export const registerUser = async (userAddress: string, name: string) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.registerUser, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userAddress, name }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error al registrar usuario");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.registerUser(userAddress, name);
 };
 
 export const changeName = async (userAddress: string, newName: string) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.changeName, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userAddress, newName }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error al cambiar nombre");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.changeName(userAddress, newName);
 };
 
 export const sendFriendRequest = async (
   fromAddress: string,
   toAddress: string
 ) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.sendFriendRequest, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ fromAddress, toAddress }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.error || "Error al enviar solicitud de amistad"
-      );
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.sendFriendRequest(fromAddress, toAddress);
 };
 
 export const acceptFriendRequest = async (
   fromAddress: string,
   toAddress: string
 ) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.acceptFriendRequest, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ fromAddress, toAddress }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.error || "Error al aceptar solicitud de amistad"
-      );
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.acceptFriendRequest(fromAddress, toAddress);
 };
 
 export const removeFriend = async (
   userAddress: string,
   friendAddress: string
 ) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.removeFriend, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userAddress, friendAddress }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error al eliminar amigo");
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.removeFriend(userAddress, friendAddress);
 };
 
 export const cancelFriendRequest = async (
   fromAddress: string,
   toAddress: string
 ) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.cancelFriendRequest, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ fromAddress, toAddress }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.error || "Error al cancelar solicitud de amistad"
-      );
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error:", error);
-    throw error;
-  }
+  return UserService.cancelFriendRequest(fromAddress, toAddress);
 };
