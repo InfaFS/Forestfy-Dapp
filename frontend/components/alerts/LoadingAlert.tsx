@@ -102,13 +102,10 @@ export const LoadingAlert: React.FC<LoadingAlertProps> = ({
         </View>
       )}
       
-      {/* Loading text con dots animados */}
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>{loadingText}</Text>
-        <Animated.View style={[styles.dotsContainer, { opacity: dotsOpacity }]}>
-          <Text style={styles.dots}>...</Text>
-        </Animated.View>
-      </View>
+      {/* Dots animados más grandes y centrados */}
+      <Animated.View style={[styles.dotsContainer, { opacity: dotsOpacity }]}>
+        <Text style={styles.dots}>...</Text>
+      </Animated.View>
       
       {/* Cancel button si está permitido */}
       {allowCancel && (
@@ -164,24 +161,16 @@ const styles = StyleSheet.create({
     fontFamily: defaultAlertTheme.fonts.primary,
     color: defaultAlertTheme.colors.text,
   },
-  loadingContainer: {
-    flexDirection: 'row',
+  dotsContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 15,
   },
-  loadingText: {
-    fontSize: defaultAlertTheme.fonts.sizes.message,
-    fontFamily: defaultAlertTheme.fonts.primary,
-    color: defaultAlertTheme.colors.textSecondary,
-  },
-  dotsContainer: {
-    marginLeft: 5,
-  },
   dots: {
-    fontSize: defaultAlertTheme.fonts.sizes.message,
+    fontSize: 18,
     fontFamily: defaultAlertTheme.fonts.primary,
     color: defaultAlertTheme.colors.textSecondary,
+    textAlign: 'center',
   },
   cancelButton: {
     borderRadius: 0,

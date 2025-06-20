@@ -95,7 +95,7 @@ export function useMarketplaceEvents({
 
         case "NFTSold":
           {
-            const { tokenId, seller, buyer, price } = event.args;
+            const { tokenId, seller, buyer, price, timestamp } = event.args;
             const formattedPrice = (Number(price) / 1e18).toFixed(2);
 
             // Emit internal event for NotificationContext to handle
@@ -107,6 +107,7 @@ export function useMarketplaceEvents({
                 seller,
                 buyer,
                 price: formattedPrice,
+                timestamp: timestamp ? Number(timestamp) : undefined,
               },
             });
 

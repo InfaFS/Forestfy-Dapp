@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Image, TouchableOpacity } from 'react
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { NOTIFICATION_STYLES } from '@/constants/NotificationStyles';
+import { Notification } from '@/types/notifications';
 
 export function NotificationDisplay() {
   const { notifications, removeNotification } = useNotifications();
@@ -27,7 +28,10 @@ export function NotificationDisplay() {
           notification.type === 'nft_sold' || 
           notification.type === 'nft_bought' ||
           notification.type === 'friend_request_received' ||
-          notification.type === 'friend_request_accepted';
+          notification.type === 'friend_request_accepted' ||
+          notification.type === 'coins_received';
+        
+        const isSessionLost = notification.type === 'session_lost';
         
         return (
           <Animated.View
@@ -40,14 +44,22 @@ export function NotificationDisplay() {
               notification.type === 'nft_unlisted' && styles.infoNotification,
               notification.type === 'friend_request_received' && styles.friendNotification,
               notification.type === 'friend_request_accepted' && styles.successNotification,
+              notification.type === 'session_lost' && styles.sessionLostNotification,
+              notification.type === 'coins_received' && styles.successNotification,
             ]}
           >
             <View style={styles.content}>
-              <Image 
-                source={require("@/assets/images/logo.png")}
-                style={isSmallNotification ? styles.smallLogo : styles.logo}
-                resizeMode="contain"
-              />
+              {isSessionLost ? (
+                <View style={styles.iconContainer}>
+                  <Text style={styles.redX}>✕</Text>
+                </View>
+              ) : (
+                <Image 
+                  source={require("@/assets/images/logo.png")}
+                  style={isSmallNotification ? styles.smallLogo : styles.logo}
+                  resizeMode="contain"
+                />
+              )}
               <View style={styles.textContainer}>
                 <Text style={isSmallNotification ? styles.smallTitle : styles.title}>
                   {notification.title}
@@ -65,9 +77,7 @@ export function NotificationDisplay() {
               onPress={() => handleDismiss(notification.id)}
             >
               <Text style={styles.dismissText}>
-                {notification.type === 'nft_sold' ? "Aceptar" : 
-                 notification.type === 'friend_request_received' || 
-                 notification.type === 'friend_request_accepted' ? "Accept" : "Dismiss"}
+                Dismiss
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -194,5 +204,22 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: '#fef5eb',
     textAlign: 'center',
+  },
+  iconContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ff0000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redX: {
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 12,
+    color: '#fef5eb',
+  },
+  sessionLostNotification: {
+    backgroundColor: NOTIFICATION_STYLES.sessionLost.backgroundColor,
+    borderColor: NOTIFICATION_STYLES.sessionLost.borderColor,
   },
 }); 

@@ -8,6 +8,7 @@ export type AppEvent =
         seller: string;
         buyer?: string;
         price: string;
+        timestamp?: number;
       };
     }
   | {
@@ -23,6 +24,7 @@ export type AppEvent =
         to?: string;
         user1?: string;
         user2?: string;
+        timestamp?: number;
       };
     };
 

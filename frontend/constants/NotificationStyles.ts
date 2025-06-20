@@ -14,6 +14,10 @@ export const NOTIFICATION_STYLES = {
     backgroundColor: "#fef5eb",
     borderColor: "#d32f2f",
   },
+  sessionLost: {
+    backgroundColor: "#ffe5e5",
+    borderColor: "#cc0000",
+  },
   info: {
     backgroundColor: "#fef5eb",
     borderColor: "#2d5016",

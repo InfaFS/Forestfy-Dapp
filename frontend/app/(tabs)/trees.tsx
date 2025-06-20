@@ -509,12 +509,12 @@ const styles = StyleSheet.create({
 	// Custom button styles matching the consistent project style
 	customButton: {
 		backgroundColor: '#4a7c59',
-		borderRadius: 10,
-		paddingVertical: 20,
-		paddingHorizontal: 30,
+		borderRadius: 0,
+		paddingVertical: 25,
+		paddingHorizontal: 40,
 		borderWidth: 2,
 		borderColor: '#2d5016',
-		minWidth: 280,
+		minWidth: 320,
 		alignItems: 'center',
 		flexDirection: 'row',
 		position: 'relative',

@@ -8,6 +8,7 @@ import { TokenContract, NFTContract } from "@/constants/thirdweb";
 import { LoadingAnimation, CoinAnimation, ClockAnimation } from "@/components/animations";
 import { MysteryTree, MysteryTreeRef } from "@/components/forest";
 import { useAlert } from "@/hooks/useAlert";
+import { useNotification } from '@/hooks/useNotification';
 import { AlertRenderer } from "@/components/alerts/AlertRenderer";
 import { ProtectedRoute } from "@/components/auth";
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
@@ -151,6 +152,7 @@ export default function FocusScreen() {
 	const [isMintingNFT, setIsMintingNFT] = useState(false);
 	const [isProcessingTokens, setIsProcessingTokens] = useState(false);
 	const alert = useAlert();
+	const { showNotification } = useNotification();
 	const [success, setSuccess] = useState<string | null>(null);
 	const [hasEnoughTokens, setHasEnoughTokens] = useState(false);
 	const [tokenBalance, setTokenBalance] = useState<string>("0");
@@ -224,34 +226,26 @@ export default function FocusScreen() {
 		}
 	}, [account?.address]);
 
-	// Función para actualizar el balance usando DeviceEventEmitter con reintentos
-	const updateBalance = useCallback(() => {
+	// Función para actualizar el balance de forma inmediata
+	const updateBalance = useCallback(async () => {
 		console.log('🔄 Actualizando balance en Focus...');
-		// Actualización inmediata
+		
+		// Actualización inmediata local
+		await fetchBalance();
+		
+		// Emit para otros componentes
 		DeviceEventEmitter.emit('refreshWalletData');
 		
-		// Reintento después de 1 segundo
-		setTimeout(() => {
-			console.log('🔄 Reintento 1 - Actualizando balance...');
-			DeviceEventEmitter.emit('refreshWalletData');
-		}, 1000);
-		
-		// Reintento después de 3 segundos
-		setTimeout(() => {
-			console.log('🔄 Reintento 2 - Actualizando balance...');
-			DeviceEventEmitter.emit('refreshWalletData');
-		}, 3000);
-		
-		// Actualización local también
-		setTimeout(() => {
-			fetchBalance();
-		}, 1500);
+		// Un solo reintento después de 500ms para asegurar
+		setTimeout(async () => {
+			await fetchBalance();
+		}, 500);
 	}, [fetchBalance]);
 
 	useEffect(() => {
 		fetchBalance();
-		// Actualizar el balance cada 60 segundos (reducido de 30)
-		const interval = setInterval(fetchBalance, 60000);
+		// Actualizar el balance cada 15 segundos para mejor responsividad
+		const interval = setInterval(fetchBalance, 15000);
 		return () => clearInterval(interval);
 	}, [fetchBalance]);
 
@@ -328,16 +322,19 @@ export default function FocusScreen() {
 			setAbandonmentStartTime(null);
 			
 					// Show resume alert instead of automatically resuming
-		alert.showConfirmAlert({
-			title: "Resume Timer",
-			message: "Do you want to resume your focus session?",
-			confirmText: "Resume",
-			cancelText: "Cancel",
-			variant: "success"
-		}).then((confirmed) => {
-			if (confirmed) {
-				handleResumeTimer();
-			}
+		const timeRemaining = Math.floor(pausedTimeRemaining / 60);
+		const timeSeconds = pausedTimeRemaining % 60;
+		const timeDisplay = `${timeRemaining}:${timeSeconds.toString().padStart(2, '0')}`;
+		
+		alert.showInfoAlert({
+			title: "Welcome back!",
+			message: `You have ${timeDisplay} remaining to focus`,
+			subtitle: "Tap resume to continue where you left off",
+			buttonText: "Resume",
+			variant: "success",
+			icon: "warning"
+		}).then(() => {
+			handleResumeTimer();
 		});
 		}
 		
@@ -400,9 +397,10 @@ export default function FocusScreen() {
 		// Show session lost alert
 		alert.showInfoAlert({
 			title: "Session Lost",
-			message: `You lost ${inputValue} tokens due to abandoning the session`,
-			variant: "error",
-			icon: "error"
+			message: `You lost ${inputValue} FTK tokens! This is a significant loss due to abandoning your focus session. Be more focused the next time`,
+			variant: "destructive",
+			icon: "close",
+			theme: "sessionLost"
 		});
 	}, [inputValue]);
 
@@ -567,8 +565,8 @@ export default function FocusScreen() {
 
 		setTokensToInvest(amount);
 		const confirmed = await alert.showConfirmAlert({
-			title: "Confirm Tree Planting",
-			message: `Invest ${amount} tokens for ${selectedTimer} seconds?`,
+			title: "Confirm Focus Session",
+			message: `Are you sure you want to invest ${amount} FTK tokens for ${selectedTimer} seconds of focus?`,
 			confirmText: "Start Focus",
 			cancelText: "Cancel",
 			variant: "success",
@@ -633,7 +631,7 @@ export default function FocusScreen() {
 		
 		const confirmed = await alert.showConfirmAlert({
 			title: "Claim Tokens",
-			message: `Claim ${totalAmount.toFixed(2)} tokens?`,
+			message: `Are you sure you want to claim ${totalAmount.toFixed(2)} FTK tokens? You will lose the chance to mint an NFT tree.`,
 			confirmText: "Claim",
 			cancelText: "Cancel",
 			variant: "success",
@@ -655,6 +653,14 @@ export default function FocusScreen() {
 			const originalAmount = Number(inputValue);
 			const totalAmount = originalAmount + potentialReward;
 			await claimStaking(account.address, totalAmount);
+			
+			// Mostrar notificación de éxito con las coins recibidas
+			showNotification({
+				type: "coins_received",
+				title: "Coins Received!",
+				message: `You received ${totalAmount.toFixed(2)} FTK tokens`,
+				amount: totalAmount
+			});
 			
 			// Actualizar balance después de reclamar tokens
 			console.log('🎉 Tokens reclamados, actualizando balance...');
@@ -686,7 +692,7 @@ export default function FocusScreen() {
 		
 		const confirmed = await alert.showConfirmAlert({
 			title: "Mint NFT Tree",
-			message: `Mint NFT tree with ${totalAmount.toFixed(2)} tokens?`,
+			message: `Are you sure you want to mint an NFT tree with ${totalAmount.toFixed(2)} FTK tokens? You will lose the chance to receive these tokens directly.`,
 			confirmText: "Mint NFT",
 			cancelText: "Cancel",
 			variant: "success",
@@ -708,7 +714,7 @@ export default function FocusScreen() {
 			const amount = Number(inputValue);
 			await mintTree(account.address, amount + potentialReward);
 			await alert.showInfoAlert({
-				title: "NFT created successfully!",
+				title: "A new tree was planted in your forest!",
 				variant: "success",
 				icon: "success",
 				theme: "focus"

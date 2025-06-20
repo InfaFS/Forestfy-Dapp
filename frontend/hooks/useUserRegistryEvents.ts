@@ -61,7 +61,7 @@ export function useUserRegistryEvents({
       switch (event.eventName) {
         case "FriendRequestSent":
           {
-            const { from, to } = event.args;
+            const { from, to, timestamp } = event.args;
 
             // Emit internal event for NotificationContext to handle
             appEventEmitter.emit({
@@ -70,6 +70,7 @@ export function useUserRegistryEvents({
                 eventType: "FriendRequestSent",
                 from,
                 to,
+                timestamp: timestamp ? Number(timestamp) : undefined,
               },
             });
 
@@ -81,7 +82,7 @@ export function useUserRegistryEvents({
 
         case "FriendRequestAccepted":
           {
-            const { from, to } = event.args;
+            const { from, to, timestamp } = event.args;
 
             // Emit internal event for NotificationContext to handle
             appEventEmitter.emit({
@@ -90,6 +91,7 @@ export function useUserRegistryEvents({
                 eventType: "FriendRequestAccepted",
                 from,
                 to,
+                timestamp: timestamp ? Number(timestamp) : undefined,
               },
             });
 

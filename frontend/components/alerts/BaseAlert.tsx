@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { AlertPosition, AlertIcon, AlertThemeName } from '@/types/alerts';
-import { getIconSource } from '@/constants/AlertTheme';
+import { getIconSource, sessionLostTheme } from '@/constants/AlertTheme';
 
 interface BaseAlertProps {
   show: boolean;
@@ -107,7 +107,22 @@ export const BaseAlert = forwardRef<BaseAlertRef, BaseAlertProps>(({
 
   if (!show || !fontsLoaded) return null;
 
-  // Use exact NFT alert styling for all alerts
+  // Use exact NFT alert styling for all alerts, except sessionLost
+  const getAlertStyles = () => {
+    if (theme === 'sessionLost') {
+      return {
+        backgroundColor: sessionLostTheme.styling.backgroundColor,
+        borderColor: sessionLostTheme.styling.borderColor,
+        borderWidth: sessionLostTheme.styling.borderWidth,
+      };
+    }
+    return {
+      backgroundColor: '#fef5eb',
+      borderColor: '#2d5016',
+      borderWidth: 3,
+    };
+  };
+
   return (
     <Animated.View
       style={[
@@ -118,6 +133,7 @@ export const BaseAlert = forwardRef<BaseAlertRef, BaseAlertProps>(({
     >
       <View style={[
         styles.alertContent,
+        getAlertStyles(),
         (typeof maxWidth === 'number' || typeof minWidth === 'number') && {
           maxWidth: typeof maxWidth === 'number' ? maxWidth : undefined,
           minWidth: typeof minWidth === 'number' ? minWidth : undefined,
@@ -147,10 +163,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   alertContent: {
-    backgroundColor: '#fef5eb',
     borderRadius: 0,
-    borderWidth: 3,
-    borderColor: '#2d5016',
     paddingVertical: 25,
     paddingHorizontal: 50,
     alignItems: 'center',

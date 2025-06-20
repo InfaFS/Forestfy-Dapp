@@ -5,10 +5,15 @@ import { useConnect } from "thirdweb/react";
 import { inAppWallet } from "thirdweb/wallets";
 import { useAuth } from "@/hooks/useAuth";
 import { client, mantleSepoliaTestnet } from "@/constants/thirdweb";
+import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 
 export default function LoginScreen() {
 	const { connect, isConnecting } = useConnect();
 	const { isAuthenticated, redirectToMain } = useAuth();
+	
+	const [fontsLoaded] = useFonts({
+		PressStart2P_400Regular,
+	});
 
 	// Si ya está conectado, redirigir a la página principal
 	React.useEffect(() => {
@@ -16,6 +21,17 @@ export default function LoginScreen() {
 			redirectToMain();
 		}
 	}, [isAuthenticated, redirectToMain]);
+
+	// Mostrar loading hasta que las fuentes se carguen
+	if (!fontsLoaded) {
+		return (
+			<ThemedView style={styles.container}>
+				<ThemedView style={styles.loadingContainer}>
+					<ActivityIndicator size="large" color="#4a7c59" />
+				</ThemedView>
+			</ThemedView>
+		);
+	}
 
 	return (
 		<ThemedView style={styles.container}>
@@ -97,6 +113,8 @@ const styles = StyleSheet.create({
 		marginBottom: 10,
 		textAlign: "center",
 		fontFamily: 'PressStart2P_400Regular',
+		lineHeight: 24,
+		paddingHorizontal: 10,
 	},
 	subtitle: {
 		textAlign: "center",
@@ -104,6 +122,7 @@ const styles = StyleSheet.create({
 		fontFamily: 'PressStart2P_400Regular',
 		fontSize: 10,
 		lineHeight: 16,
+		paddingHorizontal: 20,
 	},
 	buttonContainer: {
 		width: "100%",
@@ -136,5 +155,12 @@ const styles = StyleSheet.create({
 		color: "#333",
 		fontFamily: 'PressStart2P_400Regular',
 		fontSize: 12,
+		lineHeight: 16,
+		textAlign: "center",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
 	},
 }); 

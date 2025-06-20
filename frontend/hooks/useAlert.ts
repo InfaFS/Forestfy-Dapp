@@ -40,6 +40,7 @@ export interface UseAlertResult {
   showInfoAlert: (config: {
     title?: string;
     message?: string;
+    subtitle?: string;
     buttonText?: string;
     variant?: string;
     icon?: string;
@@ -187,6 +188,7 @@ export const useAlert = (): UseAlertResult => {
     (config: {
       title?: string;
       message?: string;
+      subtitle?: string;
       buttonText?: string;
       variant?: string;
       icon?: string;

@@ -923,9 +923,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   viewForestButton: {
-    backgroundColor: '#4a7c59',
+    backgroundColor: '#0f1f06',
     borderWidth: 2,
-    borderColor: '#2d5016',
+    borderColor: '#050a02',
     borderRadius: 0,
     paddingVertical: 8,
     paddingHorizontal: 12,

@@ -9,6 +9,7 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
   onClose,
   title,
   message,
+  subtitle,
   buttonText = "OK",
   onButtonPress,
   variant = "neutral",
@@ -47,8 +48,13 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
         {title}
       </Text>
       {message && (
-        <Text style={styles.subtitle}>
+        <Text style={styles.message}>
           {message}
+        </Text>
+      )}
+      {subtitle && (
+        <Text style={styles.subtitle}>
+          {subtitle}
         </Text>
       )}
       <TouchableOpacity
@@ -79,7 +85,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 10,
     fontFamily: 'PressStart2P_400Regular',
-    color: '#4a7c59',
+    color: '#666',
     marginBottom: 20,
     textAlign: 'center',
     lineHeight: 14,
@@ -104,5 +110,13 @@ const styles = StyleSheet.create({
     color: '#2d5016',
     fontFamily: 'PressStart2P_400Regular',
     fontSize: 8,
+  },
+  message: {
+    fontSize: 10,
+    fontFamily: 'PressStart2P_400Regular',
+    color: '#4a7c59',
+    marginBottom: 10,
+    textAlign: 'center',
+    lineHeight: 14,
   },
 }); 

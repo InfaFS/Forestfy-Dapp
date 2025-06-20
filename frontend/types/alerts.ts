@@ -183,6 +183,7 @@ export interface InputAlertProps extends BaseAlertProps {
 export interface InfoAlertProps extends BaseAlertProps {
   type: "info";
   buttonText?: string;
+  subtitle?: string;
   onButtonPress?: () => void;
 }
 

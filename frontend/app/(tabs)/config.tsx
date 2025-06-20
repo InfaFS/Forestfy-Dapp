@@ -5,7 +5,7 @@ import { ThemedButton, ThemedView, ThemedText } from "@/components/ui";
 import { useState, useEffect, useCallback } from "react";
 import { useReadContract, useActiveAccount, useDisconnect, useActiveWallet } from "thirdweb/react";
 import { TokenContract, UserRegistryContract } from "@/constants/thirdweb";
-import { reclaimReward, buyParcel, changeName } from "@/constants/api";
+import { reclaimReward, buyParcel, changeName, registerUser } from "@/constants/api";
 import { useTrees } from "@/contexts/TreesContext";
 import { useAlert } from "@/hooks/useAlert";
 import { AlertRenderer } from "@/components/alerts/AlertRenderer";
@@ -56,7 +56,7 @@ export default function ConfigScreen() {
 	});
 
 	// Obtener información del usuario (incluyendo nombre)
-	const { data: userInfo } = useReadContract({
+	const { data: userInfo, refetch: refetchUserInfo } = useReadContract({
 		contract: UserRegistryContract,
 		method: "function getUserInfo(address) view returns (string name, address userAddress, bool exists, address[] friends, uint256 createdAt)",
 		params: [account?.address || ""],
@@ -273,13 +273,50 @@ export default function ConfigScreen() {
 	};
 
 	const handleConfirmRegisterUser = async (username: string) => {
+		if (!account?.address) {
+			await alert.showInfoAlert({
+				title: "Error",
+				message: "Please connect your wallet first",
+				variant: "destructive",
+				icon: "error"
+			});
+			return;
+		}
+
+		// Show loading alert
+		const loadingId = alert.showLoadingAlert({
+			title: "Registering User",
+			message: `Registering "${username}" in Forestfy...`,
+			allowCancel: false
+		});
+
 		try {
+			await registerUser(account.address, username);
+			
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
+			await alert.showInfoAlert({
+				title: "Registration Successful",
+				message: `Welcome to Forestfy, ${username}!`,
+				icon: "success"
+			});
+			
+			// Refresh user data
 			await refetchUserRegistration();
 			setRefreshTrigger(prev => prev + 1);
 			DeviceEventEmitter.emit('refreshSocialData');
-			console.log("User registered successfully:", username);
-		} catch (error) {
-			console.error("Error refreshing user registration:", error);
+		} catch (error: any) {
+			console.error("Error registering user:", error);
+			// Hide loading alert
+			alert.hideAlert(loadingId);
+			
+			await alert.showInfoAlert({
+				title: "Registration Failed",
+				message: error.message || "Could not register user. Please try again.",
+				variant: "destructive",
+				icon: "error"
+			});
 		}
 	};
 
@@ -304,6 +341,9 @@ export default function ConfigScreen() {
 		try {
 			await changeName(account.address, newName);
 			
+			// Refresh user info immediately
+			await refetchUserInfo();
+			
 			// Hide loading alert
 			alert.hideAlert(loadingId);
 			
@@ -314,6 +354,7 @@ export default function ConfigScreen() {
 			});
 			
 			setRefreshTrigger(prev => prev + 1);
+			DeviceEventEmitter.emit('refreshSocialData');
 		} catch (error: any) {
 			console.error("Error changing name:", error);
 			// Hide loading alert

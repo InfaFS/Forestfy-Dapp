@@ -80,6 +80,8 @@ export const getIconSource = (icon?: string) => {
       return require("@/assets/images/logo.png"); // Usar logo para éxito/árbol
     case "error":
       return require("@/assets/images/cerrar.png");
+    case "close":
+      return require("@/assets/images/marchitado.png"); // Árbol marchitado para session lost
     case "warning":
       return require("@/assets/images/clock_1.png");
     case "info":
