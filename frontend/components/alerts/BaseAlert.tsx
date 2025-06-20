@@ -8,8 +8,14 @@ import {
   TouchableWithoutFeedback 
 } from 'react-native';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
-import { AlertPosition, AlertIcon } from '@/types/alerts';
-import { defaultAlertTheme, getIconSource } from '@/constants/AlertTheme';
+import { AlertPosition, AlertIcon, AlertThemeName } from '@/types/alerts';
+import { 
+  defaultAlertTheme, 
+  getIconSource, 
+  focusAlertTheme, 
+  friendsAlertTheme, 
+  sessionLostTheme 
+} from '@/constants/AlertTheme';
 
 interface BaseAlertProps {
   show: boolean;
@@ -22,6 +28,7 @@ interface BaseAlertProps {
   allowBackdropClose?: boolean;
   maxWidth?: number | string;
   minWidth?: number | string;
+  theme?: AlertThemeName;
 }
 
 export const BaseAlert: React.FC<BaseAlertProps> = ({
@@ -33,8 +40,9 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
   autoClose = false,
   autoCloseDelay = 3000,
   allowBackdropClose = false,
-  maxWidth = '90%',
-  minWidth = 300,
+  maxWidth,
+  minWidth,
+  theme = 'default',
 }) => {
   const alertOpacity = useRef(new Animated.Value(0)).current;
   const alertScale = useRef(new Animated.Value(0.8)).current;
@@ -44,10 +52,35 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
     PressStart2P_400Regular,
   });
 
-  // Configurar posición según el prop
+  // Get theme config
+  const getThemeConfig = () => {
+    switch (theme) {
+      case 'focus':
+        return focusAlertTheme;
+      case 'friends':
+        return friendsAlertTheme;
+      case 'sessionLost':
+        return sessionLostTheme;
+      default:
+        return defaultAlertTheme;
+    }
+  };
+
+  const themeConfig = getThemeConfig();
+
+  // Configurar posición según el theme o prop
   const getPositionStyle = () => {
     const { height } = Dimensions.get('window');
     
+    // Use theme positioning if available
+    if (theme !== 'default' && themeConfig.positioning) {
+      return { 
+        top: themeConfig.positioning.top,
+        paddingHorizontal: themeConfig.positioning.paddingHorizontal
+      };
+    }
+    
+    // Fallback to prop-based positioning
     switch (position) {
       case 'top':
         return { top: height * 0.15 };
@@ -63,21 +96,30 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
     if (show) {
       // Reset animation values
       alertOpacity.setValue(0);
-      alertScale.setValue(0.8);
       
-      // Animate in
-      Animated.parallel([
+      if (theme === 'focus' || theme === 'friends' || theme === 'sessionLost') {
+        // Use original subtle animation for focus and friends
         Animated.timing(alertOpacity, {
           toValue: 1,
-          duration: defaultAlertTheme.animation.duration,
+          duration: themeConfig.animation.duration,
           useNativeDriver: true,
-        }),
-        Animated.timing(alertScale, {
-          toValue: 1,
-          duration: defaultAlertTheme.animation.duration,
-          useNativeDriver: true,
-        }),
-      ]).start();
+        }).start();
+      } else {
+        // Use default scale animation for other alerts
+        alertScale.setValue(0.8);
+        Animated.parallel([
+          Animated.timing(alertOpacity, {
+            toValue: 1,
+            duration: themeConfig.animation.duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(alertScale, {
+            toValue: 1,
+            duration: themeConfig.animation.duration,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
 
       // Auto close timer
       if (autoClose && autoCloseDelay > 0) {
@@ -94,7 +136,7 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
         autoCloseTimer.current = null;
       }
     };
-  }, [show, autoClose, autoCloseDelay]);
+  }, [show, autoClose, autoCloseDelay, theme]);
 
   const handleClose = () => {
     // Clear auto close timer
@@ -104,18 +146,28 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
     }
 
     // Animate out
-    Animated.parallel([
+    if (theme === 'focus' || theme === 'friends' || theme === 'sessionLost') {
+      // Use original subtle animation for focus and friends
       Animated.timing(alertOpacity, {
         toValue: 0,
-        duration: defaultAlertTheme.animation.duration,
+        duration: themeConfig.animation.duration,
         useNativeDriver: true,
-      }),
-      Animated.timing(alertScale, {
-        toValue: 0.8,
-        duration: defaultAlertTheme.animation.duration,
-        useNativeDriver: true,
-      }),
-    ]).start(() => onClose());
+      }).start(() => onClose());
+    } else {
+      // Use default scale animation for other alerts
+      Animated.parallel([
+        Animated.timing(alertOpacity, {
+          toValue: 0,
+          duration: themeConfig.animation.duration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(alertScale, {
+          toValue: 0.8,
+          duration: themeConfig.animation.duration,
+          useNativeDriver: true,
+        }),
+      ]).start(() => onClose());
+    }
   };
 
   const handleBackdropPress = () => {
@@ -125,6 +177,12 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
   };
 
   if (!show || !fontsLoaded) return null;
+
+  // Get styling from theme
+  const styling = themeConfig.styling;
+  const animatedStyles = theme === 'focus' || theme === 'friends' || theme === 'sessionLost'
+    ? { opacity: alertOpacity } // Only opacity for focus/friends
+    : { opacity: alertOpacity, transform: [{ scale: alertScale }] }; // Scale + opacity for others
 
   return (
     <View style={[styles.overlay, StyleSheet.absoluteFill]}>
@@ -136,17 +194,36 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
         style={[
           styles.alertContainer,
           getPositionStyle(),
-          {
-            opacity: alertOpacity,
-            transform: [{ scale: alertScale }],
-          },
+          animatedStyles,
         ]}
       >
         <View style={[
           styles.alertContent, 
+          styling && {
+            backgroundColor: styling.backgroundColor,
+            borderColor: styling.borderColor,
+            borderWidth: styling.borderWidth,
+            borderRadius: styling.borderRadius,
+            shadowColor: styling.shadowColor,
+            shadowOffset: styling.shadowOffset,
+            shadowOpacity: styling.shadowOpacity,
+            shadowRadius: styling.shadowRadius,
+            elevation: styling.elevation,
+          },
+          !styling && {
+            backgroundColor: themeConfig.colors.background,
+            borderColor: themeConfig.colors.border,
+            borderWidth: 3,
+            borderRadius: 0,
+            shadowColor: '#000',
+            shadowOffset: { width: 2, height: 2 },
+            shadowOpacity: 0.8,
+            shadowRadius: 0,
+            elevation: 5,
+          },
           { 
-            maxWidth: typeof maxWidth === 'number' ? maxWidth : undefined,
-            minWidth: typeof minWidth === 'number' ? minWidth : undefined 
+            maxWidth: maxWidth || styling?.maxWidth || '90%',
+            minWidth: minWidth || styling?.minWidth || 300
           }
         ]}>
           {icon !== 'none' && (
@@ -171,25 +248,15 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   alertContainer: {
-    paddingHorizontal: defaultAlertTheme.spacing.margin,
     alignItems: 'center',
     position: 'absolute',
     left: 0,
     right: 0,
   },
   alertContent: {
-    backgroundColor: defaultAlertTheme.colors.background,
-    borderRadius: 0, // Pixel art style
-    borderWidth: 3,
-    borderColor: defaultAlertTheme.colors.border,
     paddingVertical: 25,
-    paddingHorizontal: defaultAlertTheme.spacing.padding,
+    paddingHorizontal: 50,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-    elevation: 5,
     width: '100%',
   },
   icon: {

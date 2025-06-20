@@ -265,7 +265,8 @@ export default function SocialScreen() {
       message: `Accept friend request from ${fromName}?`,
       confirmText: "Accept",
       cancelText: "Cancel",
-      variant: "success"
+      variant: "success",
+      theme: "friends"
     });
 
     if (confirmed) {
@@ -283,7 +284,8 @@ export default function SocialScreen() {
       await alert.showInfoAlert({
         title: `You are now friends with ${fromName}!`,
         variant: "success",
-        icon: "success"
+        icon: "success",
+        theme: "friends"
       });
       
       // Refresh data
@@ -306,8 +308,8 @@ export default function SocialScreen() {
       message: `Reject friend request from ${fromName}?`,
       confirmText: "Reject",
       cancelText: "Cancel",
-      destructive: true,
-      variant: "error"
+      variant: "destructive",
+      theme: "friends"
     });
 
     if (confirmed) {
@@ -325,7 +327,8 @@ export default function SocialScreen() {
       await alert.showInfoAlert({
         title: `Friend request from ${fromName} has been cancelled`,
         variant: "success",
-        icon: "success"
+        icon: "success",
+        theme: "friends"
       });
       
       // Refresh data
@@ -347,8 +350,8 @@ export default function SocialScreen() {
       message: `Remove ${friendName} from your friends list?`,
       confirmText: "Remove",
       cancelText: "Cancel",
-      destructive: true,
-      variant: "error"
+      variant: "destructive",
+      theme: "friends"
     });
 
     if (confirmed) {
@@ -366,7 +369,8 @@ export default function SocialScreen() {
       await alert.showInfoAlert({
         title: `${friendName} has been removed from your friends list`,
         variant: "success",
-        icon: "success"
+        icon: "success",
+        theme: "friends"
       });
       
       // Refresh data

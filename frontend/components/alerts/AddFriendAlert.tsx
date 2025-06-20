@@ -331,7 +331,8 @@ export const useAddFriend = () => {
         title: "Wallet Required",
         message: "Please connect your wallet to add friends",
         variant: "error",
-        icon: "error"
+        icon: "error",
+        theme: "friends"
       });
       return null;
     }
@@ -343,6 +344,7 @@ export const useAddFriend = () => {
       maxLength: 50,
       submitText: "Send Request",
       cancelText: "Cancel",
+      theme: "friends",
       validation: (value) => {
         const trimmedUsername = value.trim();
         
@@ -371,7 +373,8 @@ export const useAddFriend = () => {
           title: "User Not Found",
           message: "User not found",
           variant: "error",
-          icon: "error"
+          icon: "error",
+          theme: "friends"
         });
         return null;
       }
@@ -381,7 +384,8 @@ export const useAddFriend = () => {
           title: "Invalid User",
           message: "Cannot add yourself as friend",
           variant: "error",
-          icon: "error"
+          icon: "error",
+          theme: "friends"
         });
         return null;
       }
@@ -398,7 +402,8 @@ export const useAddFriend = () => {
           title: "Already Friends",
           message: "Already friends with this user",
           variant: "warning",
-          icon: "info"
+          icon: "info",
+          theme: "friends"
         });
         return null;
       }
@@ -415,7 +420,8 @@ export const useAddFriend = () => {
           title: "Pending Request",
           message: "There is already a pending request from this user",
           variant: "warning",
-          icon: "info"
+          icon: "info",
+          theme: "friends"
         });
         return null;
       }
@@ -432,7 +438,8 @@ export const useAddFriend = () => {
           title: "Request Already Sent",
           message: "Friend request already sent",
           variant: "warning",
-          icon: "info"
+          icon: "info",
+          theme: "friends"
         });
         return null;
       }
@@ -445,7 +452,8 @@ export const useAddFriend = () => {
         title: "Friend Request Sent",
         message: `Friend request sent to ${username} successfully!`,
         variant: "success",
-        icon: "success"
+        icon: "success",
+        theme: "friends"
       });
 
       return username;
@@ -455,7 +463,8 @@ export const useAddFriend = () => {
         title: "Error",
         message: error.message || "Error sending friend request",
         variant: "error",
-        icon: "error"
+        icon: "error",
+        theme: "friends"
       });
       return null;
     }

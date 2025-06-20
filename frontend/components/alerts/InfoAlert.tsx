@@ -1,23 +1,47 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { BaseAlert } from './BaseAlert';
 import { InfoAlertProps } from '@/types/alerts';
-import { defaultAlertTheme, getVariantColors } from '@/constants/AlertTheme';
+import { 
+  focusAlertTheme, 
+  friendsAlertTheme, 
+  sessionLostTheme, 
+  defaultAlertTheme 
+} from '@/constants/AlertTheme';
 
 export const InfoAlert: React.FC<InfoAlertProps> = ({
   show,
   onClose,
-  onButtonPress,
-  title = "Information",
+  title,
   message,
-  buttonText = "Accept",
-  variant = 'info',
-  icon = 'logo',
-  position = 'center',
-  autoClose = false,
-  autoCloseDelay = 3000,
+  buttonText = "OK",
+  onButtonPress,
+  variant = "neutral",
+  icon = "logo",
+  position,
+  theme = 'default',
+  allowBackdropClose = false,
 }) => {
-  const colors = getVariantColors(variant);
+  const [fontsLoaded] = useFonts({
+    PressStart2P_400Regular,
+  });
+
+  // Get theme config for styling
+  const getThemeConfig = () => {
+    switch (theme) {
+      case 'focus':
+        return focusAlertTheme;
+      case 'friends':
+        return friendsAlertTheme;
+      case 'sessionLost':
+        return sessionLostTheme;
+      default:
+        return defaultAlertTheme;
+    }
+  };
+
+  const themeConfig = getThemeConfig();
 
   const handleButtonPress = () => {
     if (onButtonPress) {
@@ -27,27 +51,43 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
     }
   };
 
+  if (!fontsLoaded) return null;
+
+  // Use theme-specific styles or fallback to default
+  const titleStyle = themeConfig.typography?.title || styles.title;
+  const subtitleStyle = themeConfig.typography?.subtitle || styles.subtitle;
+  const buttonStyle = [
+    themeConfig.buttons?.button || styles.button,
+    themeConfig.buttons?.confirm || styles.confirmButton,
+    variant === 'destructive' && (themeConfig.buttons?.destructive || styles.destructiveButton)
+  ];
+  const buttonTextStyle = [
+    themeConfig.buttons?.text || styles.buttonText,
+    (variant === 'destructive' && theme === 'sessionLost') && { color: '#fef5eb' }
+  ];
+
   return (
     <BaseAlert
       show={show}
       onClose={onClose}
       icon={icon}
       position={position}
-      autoClose={autoClose}
-      autoCloseDelay={autoCloseDelay}
-      allowBackdropClose={true}
+      theme={theme}
+      allowBackdropClose={allowBackdropClose}
     >
-      {title && <Text style={styles.title}>{title}</Text>}
-      {message && <Text style={styles.message}>{message}</Text>}
-      
+      <Text style={titleStyle}>
+        {title}
+      </Text>
+      {message && (
+        <Text style={subtitleStyle}>
+          {message}
+        </Text>
+      )}
       <TouchableOpacity
-        style={[
-          styles.button,
-          { backgroundColor: colors.primary }
-        ]}
+        style={buttonStyle}
         onPress={handleButtonPress}
       >
-        <Text style={[styles.buttonText, { color: '#fff' }]}>
+        <Text style={buttonTextStyle}>
           {buttonText}
         </Text>
       </TouchableOpacity>
@@ -55,34 +95,43 @@ export const InfoAlert: React.FC<InfoAlertProps> = ({
   );
 };
 
+// Fallback styles for when theme doesn't provide specific styles
 const styles = StyleSheet.create({
   title: {
-    fontSize: defaultAlertTheme.fonts.sizes.title,
-    fontFamily: defaultAlertTheme.fonts.primary,
-    color: defaultAlertTheme.colors.text,
+    fontSize: 16,
+    fontFamily: 'PressStart2P_400Regular',
+    color: '#2d5016',
     marginBottom: 10,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'PressStart2P_400Regular',
+    color: '#4a7c59',
+    marginBottom: 20,
     textAlign: 'center',
     lineHeight: 16,
   },
-  message: {
-    fontSize: defaultAlertTheme.fonts.sizes.message,
-    fontFamily: defaultAlertTheme.fonts.primary,
-    color: defaultAlertTheme.colors.textSecondary,
-    marginBottom: 20,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
   button: {
-    borderRadius: 0,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: defaultAlertTheme.colors.border,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    borderColor: '#2d5016',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     minWidth: 100,
     alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#4a7c59',
+  },
+  destructiveButton: {
+    backgroundColor: '#d32f2f',
   },
   buttonText: {
-    fontFamily: defaultAlertTheme.fonts.primary,
-    fontSize: defaultAlertTheme.fonts.sizes.button,
+    color: '#2d5016',
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
   },
 }); 

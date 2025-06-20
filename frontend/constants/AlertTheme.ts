@@ -93,3 +93,185 @@ export const getIconSource = (icon?: string) => {
       return require("@/assets/images/logo.png");
   }
 };
+
+// Specific themes for different app sections
+export const focusAlertTheme = {
+  ...defaultAlertTheme,
+  animation: {
+    duration: 300, // Original focus animation duration
+    easing: "ease-out" as const,
+  },
+  positioning: {
+    top: "40%", // Original focus positioning
+    paddingHorizontal: 20,
+  },
+  styling: {
+    backgroundColor: "#fef5eb",
+    borderColor: "#2d5016",
+    borderWidth: 3,
+    borderRadius: 0, // Pixel art style
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    elevation: 5,
+    maxWidth: "90%",
+    minWidth: 300,
+  },
+  typography: {
+    title: {
+      fontSize: 14,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#2d5016",
+      lineHeight: 18,
+      textAlign: "center" as const,
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontSize: 10,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#4a7c59",
+      lineHeight: 14,
+      textAlign: "center" as const,
+      marginBottom: 20,
+    },
+  },
+  buttons: {
+    gap: 15,
+    button: {
+      borderRadius: 0,
+      borderWidth: 2,
+      borderColor: "#2d5016",
+      paddingVertical: 12,
+      paddingHorizontal: 30,
+      minWidth: 120,
+      alignItems: "center" as const,
+    },
+    confirm: {
+      backgroundColor: "#4a7c59",
+    },
+    cancel: {
+      backgroundColor: "#fef5eb",
+    },
+    destructive: {
+      backgroundColor: "#d32f2f",
+    },
+    text: {
+      fontSize: 10,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#2d5016",
+    },
+  },
+};
+
+export const friendsAlertTheme = {
+  ...defaultAlertTheme,
+  animation: {
+    duration: 300, // Original friends animation duration
+    easing: "ease-out" as const,
+  },
+  positioning: {
+    top: "30%", // Original friends positioning
+    paddingHorizontal: 40,
+  },
+  styling: {
+    backgroundColor: "#fef5eb",
+    borderColor: "#2d5016",
+    borderWidth: 3,
+    borderRadius: 0, // Pixel art style
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    elevation: 5,
+    maxWidth: "85%",
+    minWidth: 280,
+  },
+  typography: {
+    title: {
+      fontSize: 12,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#2d5016",
+      lineHeight: 16,
+      textAlign: "center" as const,
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontSize: 8,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#4a7c59",
+      lineHeight: 12,
+      textAlign: "center" as const,
+      marginBottom: 20,
+    },
+  },
+  buttons: {
+    gap: 15,
+    button: {
+      borderRadius: 0,
+      borderWidth: 2,
+      borderColor: "#2d5016",
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      minWidth: 90,
+      alignItems: "center" as const,
+    },
+    confirm: {
+      backgroundColor: "#4a7c59",
+    },
+    cancel: {
+      backgroundColor: "#fef5eb",
+    },
+    destructive: {
+      backgroundColor: "#d32f2f",
+    },
+    text: {
+      fontSize: 8,
+      fontFamily: "PressStart2P_400Regular",
+      color: "#2d5016",
+    },
+  },
+  input: {
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#2d5016",
+    borderRadius: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontFamily: "PressStart2P_400Regular",
+    fontSize: 10,
+    color: "#2d5016",
+    textAlign: "center" as const,
+    marginBottom: 20,
+  },
+};
+
+// Special theme for session lost alerts (error state)
+export const sessionLostTheme = {
+  ...focusAlertTheme,
+  styling: {
+    ...focusAlertTheme.styling,
+    backgroundColor: "#ffebee",
+    borderColor: "#d32f2f",
+  },
+  typography: {
+    title: {
+      ...focusAlertTheme.typography.title,
+      color: "#d32f2f",
+    },
+    subtitle: {
+      ...focusAlertTheme.typography.subtitle,
+      color: "#b71c1c",
+    },
+  },
+  buttons: {
+    ...focusAlertTheme.buttons,
+    confirm: {
+      backgroundColor: "#d32f2f",
+    },
+    text: {
+      ...focusAlertTheme.buttons.text,
+      color: "#fef5eb",
+    },
+  },
+};

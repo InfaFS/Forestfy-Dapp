@@ -571,7 +571,8 @@ export default function FocusScreen() {
 			message: `Invest ${amount} tokens for ${selectedTimer} seconds?`,
 			confirmText: "Start Focus",
 			cancelText: "Cancel",
-			variant: "success"
+			variant: "success",
+			theme: "focus"
 		});
 
 		if (confirmed) {
@@ -635,7 +636,8 @@ export default function FocusScreen() {
 			message: `Claim ${totalAmount.toFixed(2)} tokens?`,
 			confirmText: "Claim",
 			cancelText: "Cancel",
-			variant: "success"
+			variant: "success",
+			theme: "focus"
 		});
 
 		if (confirmed) {
@@ -687,7 +689,8 @@ export default function FocusScreen() {
 			message: `Mint NFT tree with ${totalAmount.toFixed(2)} tokens?`,
 			confirmText: "Mint NFT",
 			cancelText: "Cancel",
-			variant: "success"
+			variant: "success",
+			theme: "focus"
 		});
 
 		if (confirmed) {
@@ -707,7 +710,8 @@ export default function FocusScreen() {
 			await alert.showInfoAlert({
 				title: "NFT created successfully!",
 				variant: "success",
-				icon: "success"
+				icon: "success",
+				theme: "focus"
 			});
 			
 			// Actualizar balance después de mintear NFT
@@ -755,7 +759,8 @@ export default function FocusScreen() {
 			message: `Invest ${tokensToInvest} tokens in this tree?`,
 			confirmText: "Invest",
 			cancelText: "Cancel",
-			variant: "success"
+			variant: "success",
+			theme: "focus"
 		});
 
 		if (confirmed) {

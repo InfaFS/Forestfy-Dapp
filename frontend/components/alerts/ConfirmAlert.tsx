@@ -1,45 +1,74 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { BaseAlert } from './BaseAlert';
 import { ConfirmAlertProps } from '@/types/alerts';
-import { defaultAlertTheme, getVariantColors } from '@/constants/AlertTheme';
+import { 
+  focusAlertTheme, 
+  friendsAlertTheme, 
+  sessionLostTheme, 
+  defaultAlertTheme 
+} from '@/constants/AlertTheme';
 
 export const ConfirmAlert: React.FC<ConfirmAlertProps> = ({
   show,
   onClose,
   onConfirm,
-  onCancel,
-  title = "Confirm",
-  message = "Are you sure?",
+  title,
+  message,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  confirmColor,
-  isLoading = false,
-  destructive = false,
-  variant = 'neutral',
-  icon = 'logo',
-  position = 'center',
-  autoClose = false,
-  autoCloseDelay = 3000,
+  variant = "neutral",
+  icon = "logo",
+  position,
+  theme = 'default',
+  allowBackdropClose = false,
 }) => {
-  const colors = getVariantColors(variant);
-  const finalConfirmColor = confirmColor || (destructive ? '#d32f2f' : colors.primary);
+  const [fontsLoaded] = useFonts({
+    PressStart2P_400Regular,
+  });
+
+  // Get theme config for styling
+  const getThemeConfig = () => {
+    switch (theme) {
+      case 'focus':
+        return focusAlertTheme;
+      case 'friends':
+        return friendsAlertTheme;
+      case 'sessionLost':
+        return sessionLostTheme;
+      default:
+        return defaultAlertTheme;
+    }
+  };
+
+  const themeConfig = getThemeConfig();
 
   const handleConfirm = () => {
-    if (!isLoading) {
-      onConfirm();
-    }
+    onConfirm();
+    onClose();
   };
 
-  const handleCancel = () => {
-    if (!isLoading) {
-      if (onCancel) {
-        onCancel();
-      } else {
-        onClose();
-      }
-    }
-  };
+  if (!fontsLoaded) return null;
+
+  // Use theme-specific styles or fallback to default
+  const titleStyle = themeConfig.typography?.title || styles.title;
+  const subtitleStyle = themeConfig.typography?.subtitle || styles.subtitle;
+  const buttonContainerStyle = [
+    styles.buttonContainer, 
+    { gap: themeConfig.buttons?.gap || 15 }
+  ];
+  const buttonStyle = themeConfig.buttons?.button || styles.button;
+  const confirmButtonStyle = [
+    buttonStyle,
+    themeConfig.buttons?.confirm || styles.confirmButton,
+    variant === 'destructive' && (themeConfig.buttons?.destructive || styles.destructiveButton)
+  ];
+  const cancelButtonStyle = [
+    buttonStyle,
+    themeConfig.buttons?.cancel || styles.cancelButton
+  ];
+  const buttonTextStyle = themeConfig.buttons?.text || styles.buttonText;
 
   return (
     <BaseAlert
@@ -47,41 +76,33 @@ export const ConfirmAlert: React.FC<ConfirmAlertProps> = ({
       onClose={onClose}
       icon={icon}
       position={position}
-      autoClose={autoClose}
-      autoCloseDelay={autoCloseDelay}
+      theme={theme}
+      allowBackdropClose={allowBackdropClose}
     >
-      {title && <Text style={styles.title}>{title}</Text>}
-      {message && <Text style={styles.message}>{message}</Text>}
-      
-      <View style={styles.buttonContainer}>
+      <Text style={titleStyle}>
+        {title}
+      </Text>
+      {message && (
+        <Text style={subtitleStyle}>
+          {message}
+        </Text>
+      )}
+      <View style={buttonContainerStyle}>
         <TouchableOpacity
-          style={[
-            styles.button,
-            styles.cancelButton,
-            { opacity: isLoading ? 0.5 : 1 }
-          ]}
-          onPress={handleCancel}
-          disabled={isLoading}
+          style={cancelButtonStyle}
+          onPress={onClose}
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>
-            {cancelText}
-          </Text>
+          <Text style={buttonTextStyle}>{cancelText}</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity
-          style={[
-            styles.button,
-            styles.confirmButton,
-            { 
-              backgroundColor: finalConfirmColor,
-              opacity: isLoading ? 0.7 : 1 
-            }
-          ]}
+          style={confirmButtonStyle}
           onPress={handleConfirm}
-          disabled={isLoading}
         >
-          <Text style={[styles.buttonText, { color: '#fff' }]}>
-            {isLoading ? "..." : confirmText}
+          <Text style={[
+            buttonTextStyle,
+            (variant === 'destructive' && theme === 'sessionLost') && { color: '#fef5eb' }
+          ]}>
+            {confirmText}
           </Text>
         </TouchableOpacity>
       </View>
@@ -89,48 +110,49 @@ export const ConfirmAlert: React.FC<ConfirmAlertProps> = ({
   );
 };
 
+// Fallback styles for when theme doesn't provide specific styles
 const styles = StyleSheet.create({
   title: {
-    fontSize: defaultAlertTheme.fonts.sizes.title,
-    fontFamily: defaultAlertTheme.fonts.primary,
-    color: defaultAlertTheme.colors.text,
+    fontSize: 16,
+    fontFamily: 'PressStart2P_400Regular',
+    color: '#2d5016',
     marginBottom: 10,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'PressStart2P_400Regular',
+    color: '#4a7c59',
+    marginBottom: 20,
     textAlign: 'center',
     lineHeight: 16,
   },
-  message: {
-    fontSize: defaultAlertTheme.fonts.sizes.message,
-    fontFamily: defaultAlertTheme.fonts.primary,
-    color: defaultAlertTheme.colors.textSecondary,
-    marginBottom: 20,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
   buttonContainer: {
     flexDirection: 'row',
-    gap: defaultAlertTheme.spacing.buttonGap,
     marginTop: 10,
-    width: '100%',
-    justifyContent: 'center',
   },
   button: {
-    borderRadius: 0,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: defaultAlertTheme.colors.border,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    flex: 1,
-    maxWidth: 110,
+    borderColor: '#2d5016',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minWidth: 100,
     alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: defaultAlertTheme.colors.secondary,
-  },
   confirmButton: {
-    backgroundColor: defaultAlertTheme.colors.primary,
+    backgroundColor: '#4a7c59',
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+  },
+  destructiveButton: {
+    backgroundColor: '#d32f2f',
   },
   buttonText: {
-    fontFamily: defaultAlertTheme.fonts.primary,
-    fontSize: defaultAlertTheme.fonts.sizes.button,
+    color: '#2d5016',
+    fontFamily: 'PressStart2P_400Regular',
+    fontSize: 10,
   },
 }); 

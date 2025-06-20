@@ -4,17 +4,25 @@ import { ReactNode } from "react";
 export interface BaseAlertProps {
   show: boolean;
   onClose: () => void;
-  title?: string;
+  title: string;
   message?: string;
   variant?: AlertVariant;
   icon?: AlertIcon;
   position?: AlertPosition;
   autoClose?: boolean;
   autoCloseDelay?: number;
+  allowBackdropClose?: boolean;
+  theme?: AlertThemeName;
 }
 
 // Variantes de estilo
-export type AlertVariant = "success" | "error" | "warning" | "info" | "neutral";
+export type AlertVariant =
+  | "success"
+  | "error"
+  | "warning"
+  | "info"
+  | "neutral"
+  | "destructive";
 
 // Iconos disponibles
 export type AlertIcon =
@@ -30,6 +38,118 @@ export type AlertIcon =
 
 // Posiciones en pantalla
 export type AlertPosition = "center" | "top" | "bottom";
+
+// Nombres de temas disponibles
+export type AlertThemeName = "default" | "focus" | "friends" | "sessionLost";
+
+// Configuración de tema
+export interface AlertTheme {
+  colors: {
+    background: string;
+    border: string;
+    text: string;
+    textSecondary: string;
+    primary: string;
+    secondary: string;
+    success: string;
+    error: string;
+    warning: string;
+    info: string;
+  };
+  fonts: {
+    primary: string;
+    sizes: {
+      title: number;
+      message: number;
+      button: number;
+      input: number;
+    };
+  };
+  spacing: {
+    padding: number;
+    margin: number;
+    buttonGap: number;
+  };
+  animation: {
+    duration: number;
+    easing: any;
+  };
+  // Optional new properties for specific themes
+  positioning?: {
+    top: string;
+    paddingHorizontal: number;
+  };
+  styling?: {
+    backgroundColor: string;
+    borderColor: string;
+    borderWidth: number;
+    borderRadius: number;
+    shadowColor: string;
+    shadowOffset: { width: number; height: number };
+    shadowOpacity: number;
+    shadowRadius: number;
+    elevation: number;
+    maxWidth: string;
+    minWidth: number;
+  };
+  typography?: {
+    title: {
+      fontSize: number;
+      fontFamily: string;
+      color: string;
+      lineHeight: number;
+      textAlign: "center" | "left" | "right";
+      marginBottom: number;
+    };
+    subtitle: {
+      fontSize: number;
+      fontFamily: string;
+      color: string;
+      lineHeight: number;
+      textAlign: "center" | "left" | "right";
+      marginBottom: number;
+    };
+  };
+  buttons?: {
+    gap: number;
+    button: {
+      borderRadius: number;
+      borderWidth: number;
+      borderColor: string;
+      paddingVertical: number;
+      paddingHorizontal: number;
+      minWidth: number;
+      alignItems: "center" | "flex-start" | "flex-end";
+    };
+    confirm: {
+      backgroundColor: string;
+    };
+    cancel: {
+      backgroundColor: string;
+    };
+    destructive: {
+      backgroundColor: string;
+    };
+    text: {
+      fontSize: number;
+      fontFamily: string;
+      color: string;
+    };
+  };
+  input?: {
+    backgroundColor: string;
+    borderWidth: number;
+    borderColor: string;
+    borderRadius: number;
+    paddingVertical: number;
+    paddingHorizontal: number;
+    fontFamily: string;
+    fontSize: number;
+    color: string;
+    textAlign: "center" | "left" | "right";
+    marginBottom: number;
+  };
+}
 
 // Alert de confirmación (Sí/No)
 export interface ConfirmAlertProps extends BaseAlertProps {
@@ -90,40 +210,6 @@ export interface AlertAction {
   style?: "primary" | "secondary" | "destructive";
   disabled?: boolean;
   loading?: boolean;
-}
-
-// Configuración de tema
-export interface AlertTheme {
-  colors: {
-    background: string;
-    border: string;
-    text: string;
-    textSecondary: string;
-    primary: string;
-    secondary: string;
-    success: string;
-    error: string;
-    warning: string;
-    info: string;
-  };
-  fonts: {
-    primary: string;
-    sizes: {
-      title: number;
-      message: number;
-      button: number;
-      input: number;
-    };
-  };
-  spacing: {
-    padding: number;
-    margin: number;
-    buttonGap: number;
-  };
-  animation: {
-    duration: number;
-    easing: any;
-  };
 }
 
 // Union type de todas las props

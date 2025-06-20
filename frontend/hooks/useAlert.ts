@@ -19,6 +19,7 @@ export interface UseAlertResult {
     variant?: string;
     icon?: string;
     position?: string;
+    theme?: string;
   }) => Promise<boolean>;
 
   showInputAlert: (config: {
@@ -33,6 +34,7 @@ export interface UseAlertResult {
     variant?: string;
     icon?: string;
     position?: string;
+    theme?: string;
   }) => Promise<string | null>;
 
   showInfoAlert: (config: {
@@ -44,6 +46,7 @@ export interface UseAlertResult {
     position?: string;
     autoClose?: boolean;
     autoCloseDelay?: number;
+    theme?: string;
   }) => Promise<void>;
 
   showLoadingAlert: (config: {
@@ -93,6 +96,7 @@ export const useAlert = (): UseAlertResult => {
       variant?: string;
       icon?: string;
       position?: string;
+      theme?: string;
     }): Promise<boolean> => {
       return new Promise((resolve) => {
         const id = generateId();
@@ -138,6 +142,7 @@ export const useAlert = (): UseAlertResult => {
       variant?: string;
       icon?: string;
       position?: string;
+      theme?: string;
     }): Promise<string | null> => {
       return new Promise((resolve) => {
         const id = generateId();
@@ -200,6 +205,7 @@ export const useAlert = (): UseAlertResult => {
       position?: string;
       autoClose?: boolean;
       autoCloseDelay?: number;
+      theme?: string;
     }): Promise<void> => {
       return new Promise((resolve) => {
         const id = generateId();
