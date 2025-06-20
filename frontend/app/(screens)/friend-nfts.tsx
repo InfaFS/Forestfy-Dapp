@@ -1,11 +1,10 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity } from "react-native";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedText } from "@/components/ThemedText";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemedView, ThemedText } from "@/components/ui";
+import { ProtectedRoute } from "@/components/auth";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
-import { FriendNFTList } from "@/components/nfts/FriendNFTList";
+import { FriendNFTList } from "@/components/nfts";
 
 export default function FriendNFTsScreen() {
 	const router = useRouter();

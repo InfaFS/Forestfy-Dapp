@@ -1,21 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, StatusBar, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ThemedView, ThemedText } from '@/components/ui';
+import { ProtectedRoute } from '@/components/auth';
 import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { MarketplaceContract, NFTContract } from '@/constants/thirdweb';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { router } from 'expo-router';
 import { listNFT, unlistNFT } from '@/constants/api';
-import { NFTBuyAlert } from '@/components/NFTBuyAlert';
-import { ConfirmNFTListAlert } from '@/components/ConfirmNFTListAlert';
-import { ConfirmNFTUnlistAlert } from '@/components/ConfirmNFTUnlistAlert';
+import { NFTBuyAlert, ConfirmNFTListAlert, ConfirmNFTUnlistAlert } from '@/components/alerts';
 import { useTrees } from '@/contexts/TreesContext';
 import { useMarketplace } from '@/contexts/MarketplaceContext';
 import { useUserNFTsWithListing } from '@/hooks/useUserNFTsWithListing';
 import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
-import { EventToast } from '@/components/common/EventToast';
+import { EventToast } from '@/components/common';
 
 
 interface NFTData {

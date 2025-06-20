@@ -17,7 +17,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { TreesProvider } from "@/contexts/TreesContext";
 import { MarketplaceProvider } from "@/contexts/MarketplaceContext";
 
-import { NotificationDisplay } from "@/components/NotificationDisplay";
+import { NotificationDisplay } from "@/components/common";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();

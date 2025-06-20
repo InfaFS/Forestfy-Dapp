@@ -1,25 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, StatusBar, TextInput, Animated, Easing, Text, Modal, Pressable, Alert, AppState } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedButton } from "@/components/ThemedButton";
+import { ThemedText, ThemedView, ThemedButton } from "@/components/ui";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { mintTree, reduceBalance, claimStaking } from "@/constants/api";
 import { readContract } from "thirdweb";
 import { TokenContract, NFTContract } from "@/constants/thirdweb";
-import { LoadingAnimation } from "@/components/LoadingAnimation";
-import { CoinAnimation } from "@/components/CoinAnimation";
-import { SuccessAlert } from "@/components/SuccessAlert";
-import { MysteryTree, MysteryTreeRef } from "@/components/MysteryTree";
-import { ClockAnimation } from "@/components/ClockAnimation";
+import { LoadingAnimation, CoinAnimation, ClockAnimation } from "@/components/animations";
+import { MysteryTree, MysteryTreeRef } from "@/components/forest";
+import { SuccessAlert, RewardAlert, ConfirmTreeAlert, ConfirmRewardAlert, ResumeTimerAlert, SessionLostAlert } from "@/components/alerts";
+import { ProtectedRoute } from "@/components/auth";
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { useTrees } from "@/contexts/TreesContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { RewardAlert } from "@/components/RewardAlert";
-import { ConfirmTreeAlert } from "@/components/ConfirmTreeAlert";
-import { ConfirmRewardAlert } from "@/components/ConfirmRewardAlert";
-import { ResumeTimerAlert } from "@/components/ResumeTimerAlert";
-import { SessionLostAlert } from "@/components/SessionLostAlert";
 import { DeviceEventEmitter } from 'react-native';
 
 // Componente TimeSlider personalizado

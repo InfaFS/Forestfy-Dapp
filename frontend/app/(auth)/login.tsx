@@ -1,7 +1,6 @@
 import React from "react";
 import { View, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
+import { ThemedText, ThemedView } from "@/components/ui";
 import { useConnect } from "thirdweb/react";
 import { inAppWallet } from "thirdweb/wallets";
 import { useAuth } from "@/hooks/useAuth";

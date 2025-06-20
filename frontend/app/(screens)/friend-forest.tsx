@@ -1,8 +1,7 @@
 import React from "react";
 import { StyleSheet, View, Image, TouchableOpacity, Animated, Alert } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemedText, ThemedView } from "@/components/ui";
+import { ProtectedRoute } from "@/components/auth";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import { useReadContract } from "thirdweb/react";

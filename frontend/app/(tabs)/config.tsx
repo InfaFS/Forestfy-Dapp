@@ -1,19 +1,14 @@
 import React from "react";
 import { View, Text, StyleSheet, Alert, Platform, StatusBar, TouchableOpacity, Image, ScrollView, DeviceEventEmitter } from "react-native";
 
-import { ThemedButton } from "@/components/ThemedButton";
+import { ThemedButton, ThemedView, ThemedText } from "@/components/ui";
+import { RewardAlert, ConfirmParcelAlert } from "@/components/alerts";
 import { useState, useEffect, useCallback } from "react";
 import { useReadContract, useActiveAccount, useDisconnect, useActiveWallet } from "thirdweb/react";
 import { TokenContract, UserRegistryContract } from "@/constants/thirdweb";
 import { reclaimReward, buyParcel, changeName } from "@/constants/api";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedText } from "@/components/ThemedText";
 import { useTrees } from "@/contexts/TreesContext";
-import { RewardAlert } from "@/components/RewardAlert";
-import { ConfirmParcelAlert } from "@/components/ConfirmParcelAlert";
-import { ConfirmDisconnectAlert } from '@/components/ConfirmDisconnectAlert';
-import { RegisterUserAlert } from '@/components/RegisterUserAlert';
-import { ChangeNameAlert } from '@/components/ChangeNameAlert';
+import { ConfirmDisconnectAlert, RegisterUserAlert, ChangeNameAlert } from '@/components/alerts';
 import { router } from 'expo-router';
 
 export default function ConfigScreen() {

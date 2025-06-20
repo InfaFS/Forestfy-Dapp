@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Image, View, Text } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
+import { ThemedText, ThemedView } from "@/components/ui";
 import { useEffect, useState } from "react";
 import { useReadContract } from "thirdweb/react";
 import { NFTContract } from "@/constants/thirdweb";

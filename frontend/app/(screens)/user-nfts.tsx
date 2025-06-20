@@ -1,9 +1,8 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity } from "react-native";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedText } from "@/components/ThemedText";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { NFTList } from "@/components/nfts/NFTList";
+import { ThemedView, ThemedText } from "@/components/ui";
+import { ProtectedRoute } from "@/components/auth";
+import { NFTList } from "@/components/nfts";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';

@@ -2,7 +2,7 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Tabs } from "expo-router";
 import React from "react";
-import { PixelTabIcon } from "@/components/navigation/PixelTabIcon";
+import { PixelTabIcon } from "@/components/navigation";
 
 export default function TabLayout() {
 	const colorScheme = useColorScheme();

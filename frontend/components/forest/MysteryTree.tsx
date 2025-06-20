@@ -73,7 +73,7 @@ export const MysteryTree = forwardRef<MysteryTreeRef, MysteryTreeProps>(({ disab
       {/* Imagen del árbol con animación - AGRANDADA */}
       <Animated.View style={imageAnimatedStyle}>
         <Image 
-          source={require('../public/treewb.png')}
+          source={require('@/public/treewb.png')}
           style={styles.treeImage}
           resizeMode="contain"
         />

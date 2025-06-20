@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, StyleSheet, Image, View } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '@/components/ui';
 import { buyNFT } from '@/constants/api';
 import { useUserWalletData } from '@/hooks/useUserWalletData';
 import { useWallet } from '@/contexts/WalletContext';

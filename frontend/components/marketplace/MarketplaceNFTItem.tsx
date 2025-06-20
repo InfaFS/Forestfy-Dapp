@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedView, ThemedText } from '@/components/ui';
 import { router } from 'expo-router';
 import { useNFTMetadata } from '@/hooks/useNFTMetadata';
 import { useMarketplaceListing } from '@/hooks/useMarketplaceListing';

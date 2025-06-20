@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, StatusBar, ScrollView, View, TouchableOpacity, DeviceEventEmitter, Alert } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ThemedView, ThemedText } from '@/components/ui';
+import { ProtectedRoute } from '@/components/auth';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
-import { AddFriendAlert } from '@/components/AddFriendAlert';
-import { RewardAlert } from '@/components/RewardAlert';
-import { ConfirmationAlert } from '@/components/ConfirmationAlert';
+import { AddFriendAlert, RewardAlert, ConfirmationAlert } from '@/components/alerts';
 import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
 import { useUserRegistryEvents } from '@/hooks/useUserRegistryEvents';
 import { useRouter } from "expo-router";

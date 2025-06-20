@@ -1,16 +1,14 @@
 import React from "react";
 import { StyleSheet, View, Image, TouchableOpacity, Animated, Alert } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedButton } from "@/components/ThemedButton";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemedText, ThemedView, ThemedButton } from "@/components/ui";
+import { ProtectedRoute } from "@/components/auth";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { NFTContract, TokenContract } from "@/constants/thirdweb";
 import { claimFirstParcel, buyParcel } from "@/constants/api";
 import { useTrees } from "@/contexts/TreesContext";
-import { ParcelAlert } from "@/components/ParcelAlert";
+import { ParcelAlert } from "@/components/alerts";
 
 const PARCEL_IMAGES = {
 	0: require("@/assets/images/parcela.png"),

@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '@/components/ui';
 
 interface EventToastProps {
   visible: boolean;

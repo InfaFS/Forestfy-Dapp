@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Image } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedView, ThemedText } from '@/components/ui';
 
 interface EmptyStateProps {
   image?: any;

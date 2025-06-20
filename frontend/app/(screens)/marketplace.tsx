@@ -1,16 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, StatusBar, ScrollView, RefreshControl, View, Image } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ThemedView, ThemedText } from '@/components/ui';
+import { ProtectedRoute } from '@/components/auth';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { useActiveListings } from '@/hooks/useMarketplaceListing';
-import { MarketplaceNFTItem } from '@/components/marketplace/MarketplaceNFTItem';
-import { PixelBackButton } from '@/components/common/PixelBackButton';
-import { EmptyState } from '@/components/common/EmptyState';
+import { MarketplaceNFTItem } from '@/components/marketplace';
+import { PixelBackButton, EmptyState } from '@/components/common';
 import { MarketplaceContract, TokenContract } from '@/constants/thirdweb';
 import { useMarketplaceEvents } from '@/hooks/useMarketplaceEvents';
-import { EventToast } from '@/components/common/EventToast';
+import { EventToast } from '@/components/common';
 import { useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 

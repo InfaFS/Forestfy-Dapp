@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Image } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText, ThemedView } from "@/components/ui";
 import { useSocialProfiles } from "thirdweb/react";
 import { ThirdwebClient } from "thirdweb";
 import { resolveScheme } from "thirdweb/storage";
 import { SocialProfile, FarcasterProfile, getSocialProfiles } from "thirdweb/social";
-import { ThemedView } from "./ThemedView";
 
 interface SocialProfileCardProps {
   address: string | undefined;
