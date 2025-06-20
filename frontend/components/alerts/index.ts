@@ -1,5 +1,5 @@
 // Legacy Alert Components (mantener para compatibilidad)
-export { AddFriendAlert } from "./AddFriendAlert";
+export { AddFriendAlert, useAddFriend } from "./AddFriendAlert";
 export { ChangeNameAlert } from "./ChangeNameAlert";
 export { ConfirmDisconnectAlert } from "./ConfirmDisconnectAlert";
 export { ConfirmNFTBuyAlert } from "./ConfirmNFTBuyAlert";

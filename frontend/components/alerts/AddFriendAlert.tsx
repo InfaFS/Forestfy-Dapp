@@ -5,6 +5,7 @@ import { useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
 import { sendFriendRequest } from '@/constants/api';
+import { useAlert } from '@/hooks/useAlert';
 
 interface AddFriendAlertProps {
   show: boolean;
@@ -317,4 +318,148 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     lineHeight: 10,
   },
-}); 
+});
+
+// New hook-based function for modern usage
+export const useAddFriend = () => {
+  const alert = useAlert();
+  const account = useActiveAccount();
+
+  const addFriend = async (): Promise<string | null> => {
+    if (!account?.address) {
+      await alert.showInfoAlert({
+        title: "Wallet Required",
+        message: "Please connect your wallet to add friends",
+        variant: "error",
+        icon: "error"
+      });
+      return null;
+    }
+
+    const username = await alert.showInputAlert({
+      title: "Add Friend",
+      message: "Enter the username to add as friend",
+      placeholder: "Username",
+      maxLength: 50,
+      submitText: "Send Request",
+      cancelText: "Cancel",
+      validation: (value) => {
+        const trimmedUsername = value.trim();
+        
+        if (!trimmedUsername) {
+          return "Please enter a username";
+        }
+
+        return null; // Basic validation passed
+      }
+    });
+
+    if (!username) {
+      return null; // User cancelled
+    }
+
+    try {
+      // Get user address and validate
+      const userAddress = await readContract({
+        contract: UserRegistryContract,
+        method: "function getAddressByName(string) view returns (address)",
+        params: [username],
+      });
+
+      if (!userAddress || userAddress === "0x0000000000000000000000000000000000000000") {
+        await alert.showInfoAlert({
+          title: "User Not Found",
+          message: "User not found",
+          variant: "error",
+          icon: "error"
+        });
+        return null;
+      }
+
+      if (userAddress === account.address) {
+        await alert.showInfoAlert({
+          title: "Invalid User",
+          message: "Cannot add yourself as friend",
+          variant: "error",
+          icon: "error"
+        });
+        return null;
+      }
+
+      // Check if already friends
+      const areFriends = await readContract({
+        contract: UserRegistryContract,
+        method: "function areFriends(address, address) view returns (bool)",
+        params: [account.address, userAddress],
+      });
+
+      if (areFriends) {
+        await alert.showInfoAlert({
+          title: "Already Friends",
+          message: "Already friends with this user",
+          variant: "warning",
+          icon: "info"
+        });
+        return null;
+      }
+
+      // Check if they already sent me a request
+      const requestReceived = await readContract({
+        contract: UserRegistryContract,
+        method: "function friendRequests(address, address) view returns (bool)",
+        params: [userAddress, account.address],
+      });
+
+      if (requestReceived) {
+        await alert.showInfoAlert({
+          title: "Pending Request",
+          message: "There is already a pending request from this user",
+          variant: "warning",
+          icon: "info"
+        });
+        return null;
+      }
+
+      // Check if I already sent them a request
+      const requestSent = await readContract({
+        contract: UserRegistryContract,
+        method: "function friendRequests(address, address) view returns (bool)",
+        params: [account.address, userAddress],
+      });
+
+      if (requestSent) {
+        await alert.showInfoAlert({
+          title: "Request Already Sent",
+          message: "Friend request already sent",
+          variant: "warning",
+          icon: "info"
+        });
+        return null;
+      }
+
+      // Send friend request
+      await sendFriendRequest(account.address, userAddress);
+      
+      // Show success message
+      await alert.showInfoAlert({
+        title: "Friend Request Sent",
+        message: `Friend request sent to ${username} successfully!`,
+        variant: "success",
+        icon: "success"
+      });
+
+      return username;
+    } catch (error: any) {
+      console.error('Error sending friend request:', error);
+      await alert.showInfoAlert({
+        title: "Error",
+        message: error.message || "Error sending friend request",
+        variant: "error",
+        icon: "error"
+      });
+      return null;
+    }
+  };
+
+  return { addFriend };
+};

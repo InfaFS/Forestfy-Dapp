@@ -346,7 +346,6 @@ export default function FocusScreen() {
 			// Ensure everything is clean
 			setAbandonmentCountdown(null);
 			setIsShowingAbandonmentWarning(false);
-			setShowResumeTimerAlert(false);
 		}
 		
 		setAppState(nextAppState);
@@ -396,11 +395,15 @@ export default function FocusScreen() {
 		setPausedTimeRemaining(null);
 		setAbandonmentCountdown(null);
 		setIsShowingAbandonmentWarning(false);
-		setShowResumeTimerAlert(false);
 		setAbandonmentStartTime(null);
 		
 		// Show session lost alert
-		setShowSessionLostAlert(true);
+		alert.showInfoAlert({
+			title: "Session Lost",
+			message: `You lost ${inputValue} tokens due to abandoning the session`,
+			variant: "error",
+			icon: "error"
+		});
 	}, [inputValue]);
 
 	const startFocusTimer = useCallback(() => {
@@ -436,8 +439,7 @@ export default function FocusScreen() {
 			startFocusTimer();
 		}
 		
-		// Close alert
-		setShowResumeTimerAlert(false);
+		// Timer resumed successfully
 	}, [pausedTimeRemaining, startFocusTimer]);
 
 	// Timer effect actualizado
@@ -559,12 +561,22 @@ export default function FocusScreen() {
 		
 		const amount = Number(inputValue);
 		if (isNaN(amount) || amount <= 0) {
-			alert("Please enter a valid amount of tokens");
+			Alert.alert("Error", "Please enter a valid amount of tokens");
 			return;
 		}
 
 		setTokensToInvest(amount);
-		setShowConfirmTreeAlert(true);
+		const confirmed = await alert.showConfirmAlert({
+			title: "Confirm Tree Planting",
+			message: `Invest ${amount} tokens for ${selectedTimer} seconds?`,
+			confirmText: "Start Focus",
+			cancelText: "Cancel",
+			variant: "success"
+		});
+
+		if (confirmed) {
+			await handleConfirmTreePress();
+		}
 	};
 
 	const handleConfirmTreePress = async () => {
@@ -588,7 +600,7 @@ export default function FocusScreen() {
 			setTimerActive(true);
 		} catch (error) {
 			console.error("Error processing tokens. Please try again.");
-			alert("Error processing tokens. Please try again.");
+			Alert.alert("Error", "Error processing tokens. Please try again.");
 		} finally {
 			setIsLoading(false);
 			setIsProcessingTokens(false);
@@ -617,7 +629,18 @@ export default function FocusScreen() {
 		const totalAmount = Number(inputValue) + potentialReward;
 		setRewardAmount(totalAmount);
 		setRewardAlertType('tokens');
-		setShowConfirmRewardAlert(true);
+		
+		const confirmed = await alert.showConfirmAlert({
+			title: "Claim Tokens",
+			message: `Claim ${totalAmount.toFixed(2)} tokens?`,
+			confirmText: "Claim",
+			cancelText: "Cancel",
+			variant: "success"
+		});
+
+		if (confirmed) {
+			await handleConfirmClaimTokens();
+		}
 	};
 
 	const handleConfirmClaimTokens = async () => {
@@ -644,7 +667,7 @@ export default function FocusScreen() {
 			setTimeRemaining(0);
 		} catch (error) {
 			console.error("Error claiming tokens. Please try again.");
-			alert("Error claiming tokens. Please try again.");
+			Alert.alert("Error", "Error claiming tokens. Please try again.");
 		} finally {
 			setIsLoading(false);
 			setIsProcessingTokens(false);
@@ -658,7 +681,18 @@ export default function FocusScreen() {
 		const totalAmount = Number(inputValue) + potentialReward;
 		setRewardAmount(totalAmount);
 		setRewardAlertType('mint');
-		setShowConfirmRewardAlert(true);
+		
+		const confirmed = await alert.showConfirmAlert({
+			title: "Mint NFT Tree",
+			message: `Mint NFT tree with ${totalAmount.toFixed(2)} tokens?`,
+			confirmText: "Mint NFT",
+			cancelText: "Cancel",
+			variant: "success"
+		});
+
+		if (confirmed) {
+			await handleConfirmMintNFT();
+		}
 	};
 
 	const handleConfirmMintNFT = async () => {
@@ -670,8 +704,11 @@ export default function FocusScreen() {
 		try {
 			const amount = Number(inputValue);
 			await mintTree(account.address, amount + potentialReward);
-			setSuccess("NFT created successfully!");
-			setShowSuccessAlert(true);
+			await alert.showInfoAlert({
+				title: "NFT created successfully!",
+				variant: "success",
+				icon: "success"
+			});
 			
 			// Actualizar balance después de mintear NFT
 			console.log('🌳 NFT minteado, actualizando balance...');
@@ -689,7 +726,7 @@ export default function FocusScreen() {
 			setTimeRemaining(0);
 		} catch (error) {
 			console.error("Error creating NFT. Please try again.");
-			alert("Error creating NFT. Please try again.");
+			Alert.alert("Error", "Error creating NFT. Please try again.");
 		} finally {
 			setIsLoading(false);
 			setIsMintingNFT(false);
@@ -697,7 +734,7 @@ export default function FocusScreen() {
 		}
 	};
 
-	const handleTreePress = () => {
+	const handleTreePress = async () => {
 		if (!account?.address) {
 			Alert.alert("Error", "Please connect your wallet first");
 			return;
@@ -713,7 +750,17 @@ export default function FocusScreen() {
 			return;
 		}
 
-		setShowConfirmTreeAlert(true);
+		const confirmed = await alert.showConfirmAlert({
+			title: "Invest in Tree",
+			message: `Invest ${tokensToInvest} tokens in this tree?`,
+			confirmText: "Invest",
+			cancelText: "Cancel",
+			variant: "success"
+		});
+
+		if (confirmed) {
+			// Handle tree investment logic here
+		}
 	};
 
 	if (!fontsLoaded) {
@@ -921,16 +968,7 @@ export default function FocusScreen() {
 						</>
 					)}
 
-							{/* Success Alert */}
-							{showSuccessAlert && success && (
-								<SuccessAlert
-									show={showSuccessAlert}
-									onClose={() => {
-										setShowSuccessAlert(false);
-										setSuccess(null);
-									}}
-								/>
-							)}
+							
 				</ScrollView>
 
 				{/* Modal para Amount to Stake */}
@@ -981,54 +1019,7 @@ export default function FocusScreen() {
 					</View>
 				</Modal>
 
-				{/* Reward Alert */}
-				<RewardAlert
-					show={showRewardAlert}
-					message={rewardAlertMessage}
-					onClose={() => {
-						setShowRewardAlert(false);
-						setRewardAlertMessage("");
-					}}
-				/>
-
-				{/* Confirm Tree Alert */}
-				<ConfirmTreeAlert
-					show={showConfirmTreeAlert}
-					tokens={tokensToInvest}
-					onClose={() => setShowConfirmTreeAlert(false)}
-					onConfirm={handleConfirmTreePress}
-				/>
-
-				{/* Confirm Reward Alert */}
-				<ConfirmRewardAlert
-					show={showConfirmRewardAlert}
-					type={rewardAlertType}
-					reward={rewardAmount}
-					onClose={() => setShowConfirmRewardAlert(false)}
-					onConfirm={() => {
-						setShowConfirmRewardAlert(false);
-						if (rewardAlertType === 'tokens') {
-							handleConfirmClaimTokens();
-						} else {
-							handleConfirmMintNFT();
-						}
-					}}
-				/>
-
-				{/* Resume Timer Alert */}
-				<ResumeTimerAlert
-					show={showResumeTimerAlert}
-					timeRemaining={pausedTimeRemaining || 0}
-					onClose={() => setShowResumeTimerAlert(false)}
-					onResume={handleResumeTimer}
-				/>
-
-				{/* Session Lost Alert */}
-				<SessionLostAlert
-					show={showSessionLostAlert}
-					tokensLost={lostTokensAmount}
-					onClose={() => setShowSessionLostAlert(false)}
-				/>
+				<AlertRenderer alerts={alert._alerts} />
 
 			</ThemedView>
 		</ProtectedRoute>

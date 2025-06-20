@@ -142,7 +142,13 @@ export const BaseAlert: React.FC<BaseAlertProps> = ({
           },
         ]}
       >
-        <View style={[styles.alertContent, { maxWidth, minWidth: typeof minWidth === 'number' ? minWidth : undefined }]}>
+        <View style={[
+          styles.alertContent, 
+          { 
+            maxWidth: typeof maxWidth === 'number' ? maxWidth : undefined,
+            minWidth: typeof minWidth === 'number' ? minWidth : undefined 
+          }
+        ]}>
           {icon !== 'none' && (
             <Image 
               source={getIconSource(icon)}

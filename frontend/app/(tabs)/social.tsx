@@ -6,7 +6,7 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 import { useReadContract, useActiveAccount } from 'thirdweb/react';
 import { readContract } from 'thirdweb';
 import { UserRegistryContract } from '@/constants/thirdweb';
-import { AddFriendAlert } from '@/components/alerts';
+import { AddFriendAlert, useAddFriend } from '@/components/alerts';
 import { useAlert } from '@/hooks/useAlert';
 import { AlertRenderer } from '@/components/alerts/AlertRenderer';
 import { sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest } from '@/constants/api';
@@ -23,6 +23,7 @@ export default function SocialScreen() {
   const [friendRequests, setFriendRequests] = useState<Array<{address: string, name: string}>>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const alert = useAlert();
+  const { addFriend } = useAddFriend();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Cargar fuentes pixel
@@ -231,6 +232,16 @@ export default function SocialScreen() {
 
   const handleAddFriend = () => {
     setShowAddFriendAlert(true);
+  };
+
+  // Nueva versión usando el hook moderno
+  const handleAddFriendModern = async () => {
+    const username = await addFriend();
+    if (username) {
+      // Auto-refresh data when friend is added
+      refetchFriends();
+      DeviceEventEmitter.emit('refreshSocialData');
+    }
   };
 
   const handleShowSuccessMessage = async (message: string) => {
