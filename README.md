@@ -6,7 +6,7 @@ Forestfy is a Web3 focus-to-earn app where users stake tokens, mint NFT trees, t
 
 > **Note**: This project is in very early development stage. The current implementation uses a custom backend with a sponsor wallet for gas transactions. In the future, we plan to migrate to a more integrated service that better aligns with abstract wallet techniques, following best practices and providing a more fluid user experience.
 
-> **Second Note\***: Security is
+> **Important Security Notice**: Security measures are not implemented in the backend as this is a test and development version. In a production environment, proper authentication, authorization, rate limiting, input validation, and other security aspects would be fully implemented and considered.
 
 ## Prerequisites
 
