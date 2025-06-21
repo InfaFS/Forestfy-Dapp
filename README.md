@@ -6,7 +6,7 @@ Forestfy is a Web3 focus-to-earn app where users stake tokens, mint NFT trees, t
 
 > **Note**: This project is in very early development stage. The current implementation uses a custom backend with a sponsor wallet for gas transactions. In the future, we plan to migrate to a more integrated service that better aligns with abstract wallet techniques, following best practices and providing a more fluid user experience.
 
-> **Important Security Notice**: Security measures are not implemented in the backend as this is a test and development version. In a production environment, proper authentication, authorization, rate limiting, input validation, and other security aspects would be fully implemented and considered.
+> **Second Note\***: Security is
 
 ## Prerequisites
 
@@ -154,8 +154,6 @@ EXPO_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id
 EXPO_PUBLIC_THIRDWEB_SECRET_KEY=your_thidweb_secret_key
 EXPO_PUBLIC_NFT_CONTRACT_ADDRESS=your_nft_contract_address
 EXPO_PUBLIC_TOKEN_CONTRACT_ADDRESS=your_token_contract_address
-EXPO_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS=your_token_contract_address
-EXPO_PUBLIC_USERS_CONTRACT_ADDRESS=your_user_contract_address
 
 ```
 

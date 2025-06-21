@@ -81,7 +81,7 @@ const checkVirtualBalance = async (address: string, amount: string) => {
 };
 
 router.post("/mint", async (req: Request, res: Response) => {
-  console.log("📥 New mint request received");
+  console.log("📥 Nueva petición de mint recibida");
 
   try {
     const { address, amount } = req.body;
@@ -89,17 +89,17 @@ router.post("/mint", async (req: Request, res: Response) => {
     // Validate request
     const validation = validateMintRequest(address, amount);
     if (!validation.valid) {
-      console.log("❌ Validation error:", validation.error);
+      console.log("❌ Error de validación:", validation.error);
       res.status(400).json({ error: validation.error });
       return;
     }
 
-    console.log("🎨 Minting NFT...");
+    console.log("🎨 Minteando NFT...");
     const mintAmount = Math.round(amount * 10);
-    console.log(`📊 Amount to mint: ${mintAmount}`);
+    console.log(`📊 Cantidad a mintear: ${mintAmount}`);
     const mintTx = await nftContract.mintTo(address, mintAmount);
     await mintTx.wait();
-    console.log("✅ NFT minted successfully");
+    console.log("✅ NFT minteado exitosamente");
 
     res.json({
       success: true,
@@ -112,13 +112,13 @@ router.post("/mint", async (req: Request, res: Response) => {
 });
 
 router.post("/reclaim-reward", async (req: Request, res: Response) => {
-  console.log("📥 New reclaim reward request received");
+  console.log("📥 Nueva petición de reclaim reward recibida");
 
   try {
     const { address } = req.body;
 
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
@@ -126,15 +126,15 @@ router.post("/reclaim-reward", async (req: Request, res: Response) => {
     // Check if user has already claimed reward
     const hasClaimedReward = await tokenContract.hasClaimedReward(address);
     if (hasClaimedReward) {
-      console.log("❌ User already claimed their initial reward");
+      console.log("❌ Usuario ya reclamó su reward inicial");
       res.status(400).json({ error: "Initial reward already claimed" });
       return;
     }
 
-    console.log("🎁 Claiming initial reward...");
+    console.log("🎁 Reclamando reward inicial...");
     const tx = await tokenContract.claimInitialReward(address);
     await tx.wait();
-    console.log("✅ Reward claimed successfully");
+    console.log("✅ Reward reclamado exitosamente");
 
     res.json({
       success: true,
@@ -147,7 +147,7 @@ router.post("/reclaim-reward", async (req: Request, res: Response) => {
 });
 
 router.post("/withdraw", async (req: Request, res: Response) => {
-  console.log("📥 New withdraw request received");
+  console.log("📥 Nueva petición de withdraw recibida");
 
   try {
     const { address, amount } = req.body;
@@ -155,7 +155,7 @@ router.post("/withdraw", async (req: Request, res: Response) => {
     // Validate request
     const validation = validateMintRequest(address, amount);
     if (!validation.valid) {
-      console.log("❌ Validation error:", validation.error);
+      console.log("❌ Error de validación:", validation.error);
       res.status(400).json({ error: validation.error });
       return;
     }
@@ -163,7 +163,7 @@ router.post("/withdraw", async (req: Request, res: Response) => {
     // Check virtual balance
     const balanceCheck = await checkVirtualBalance(address, amount.toString());
     if (!balanceCheck.sufficient) {
-      console.log("❌ Insufficient balance");
+      console.log("❌ Balance insuficiente");
       res.status(400).json({
         error: "Insufficient balance",
         currentBalance: balanceCheck.currentBalance,
@@ -172,10 +172,10 @@ router.post("/withdraw", async (req: Request, res: Response) => {
       return;
     }
 
-    console.log("💸 Executing withdraw...");
+    console.log("💸 Ejecutando withdraw...");
     const tx = await tokenContract.withdraw(address, balanceCheck.amountInWei);
     await tx.wait();
-    console.log("✅ Withdraw completed successfully");
+    console.log("✅ Withdraw completado exitosamente");
 
     res.json({
       success: true,
@@ -188,7 +188,7 @@ router.post("/withdraw", async (req: Request, res: Response) => {
 });
 
 router.post("/reduce-balance", async (req: Request, res: Response) => {
-  console.log("📥 New reduce balance request received");
+  console.log("📥 Nueva petición de reduce balance recibida");
 
   try {
     const { address, amount } = req.body;
@@ -196,17 +196,17 @@ router.post("/reduce-balance", async (req: Request, res: Response) => {
     // Validate request
     const validation = validateMintRequest(address, amount);
     if (!validation.valid) {
-      console.log("❌ Validation error:", validation.error);
+      console.log("❌ Error de validación:", validation.error);
       res.status(400).json({ error: validation.error });
       return;
     }
 
     const amountInWei = ethers.parseUnits(amount.toString(), 18);
 
-    console.log("💸 Executing reduce balance...");
+    console.log("💸 Ejecutando reduce balance...");
     const tx = await tokenContract.reduceBalance(address, amountInWei);
     await tx.wait();
-    console.log("✅ Reduce balance completed successfully");
+    console.log("✅ Reduce balance completado exitosamente");
 
     res.json({
       success: true,
@@ -219,7 +219,7 @@ router.post("/reduce-balance", async (req: Request, res: Response) => {
 });
 
 router.post("/claim-staking", async (req: Request, res: Response) => {
-  console.log("📥 New claim staking request received");
+  console.log("📥 Nueva petición de claim staking recibida");
 
   try {
     const { address, amount } = req.body;
@@ -227,17 +227,17 @@ router.post("/claim-staking", async (req: Request, res: Response) => {
     // Validate request
     const validation = validateMintRequest(address, amount);
     if (!validation.valid) {
-      console.log("❌ Validation error:", validation.error);
+      console.log("❌ Error de validación:", validation.error);
       res.status(400).json({ error: validation.error });
       return;
     }
 
     const amountInWei = ethers.parseUnits(amount.toString(), 18);
 
-    console.log("🎁 Executing claim staking...");
+    console.log("🎁 Ejecutando claim staking...");
     const tx = await tokenContract.claimStaking(address, amountInWei);
     await tx.wait();
-    console.log("✅ Claim staking completed successfully");
+    console.log("✅ Claim staking completado exitosamente");
 
     res.json({
       success: true,
@@ -250,13 +250,13 @@ router.post("/claim-staking", async (req: Request, res: Response) => {
 });
 
 router.post("/add-parcel", async (req: Request, res: Response) => {
-  console.log("📥 New add parcel request received");
+  console.log("📥 Nueva petición de add parcel recibida");
 
   try {
     const { address } = req.body;
 
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
@@ -266,7 +266,7 @@ router.post("/add-parcel", async (req: Request, res: Response) => {
     const requiredAmount = ethers.parseUnits("5", 18); // 5 tokens
 
     if (virtualBalance < requiredAmount) {
-      console.log("❌ Insufficient balance to buy parcel");
+      console.log("❌ Balance insuficiente para comprar parcela");
       res.status(400).json({
         error: "Insufficient balance to buy parcel",
         required: "5",
@@ -275,15 +275,15 @@ router.post("/add-parcel", async (req: Request, res: Response) => {
       return;
     }
 
-    console.log("💸 Reducing 5 tokens from balance...");
+    console.log("💸 Reduciendo 5 tokens del balance...");
     const reduceTx = await tokenContract.reduceBalance(address, requiredAmount);
     await reduceTx.wait();
-    console.log("✅ Tokens reduced successfully");
+    console.log("✅ Tokens reducidos exitosamente");
 
-    console.log("🏞️ Adding parcel...");
+    console.log("🏞️ Agregando parcela...");
     const addTx = await nftContract.addParcels(address, 1);
     await addTx.wait();
-    console.log("✅ Parcel added successfully");
+    console.log("✅ Parcela agregada exitosamente");
 
     res.json({
       success: true,
@@ -297,13 +297,13 @@ router.post("/add-parcel", async (req: Request, res: Response) => {
 });
 
 router.post("/claim-first-parcel", async (req: Request, res: Response) => {
-  console.log("📥 New claim first parcel request received");
+  console.log("📥 Nueva petición de claim first parcel recibida");
 
   try {
     const { address } = req.body;
 
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
@@ -311,15 +311,15 @@ router.post("/claim-first-parcel", async (req: Request, res: Response) => {
     // Check if user already has parcels using userParcels mapping
     const userParcels = await nftContract.userParcels(address);
     if (userParcels > 0) {
-      console.log("❌ User already has parcels");
+      console.log("❌ Usuario ya tiene parcelas");
       res.status(400).json({ error: "User already has parcels" });
       return;
     }
 
-    console.log("🏞️ Adding parcel...");
+    console.log("🏞️ Agregando parcel...");
     const tx = await nftContract.addParcels(address, 1);
     await tx.wait();
-    console.log("✅ Parcel added successfully");
+    console.log("✅ Parcel agregado exitosamente");
 
     res.json({
       success: true,
@@ -332,26 +332,26 @@ router.post("/claim-first-parcel", async (req: Request, res: Response) => {
 });
 
 router.post("/list-nft", async (req: Request, res: Response) => {
-  console.log("📥 New list NFT request received");
+  console.log("📥 Nueva petición de list NFT recibida");
 
   try {
     const { address, tokenId, precio } = req.body;
 
     // Validar que todos los parámetros requeridos estén presentes
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
 
     if (!tokenId && tokenId !== 0) {
-      console.log("❌ Error: Token ID not provided");
+      console.log("❌ Error: Token ID no proporcionado");
       res.status(400).json({ error: "Token ID is required" });
       return;
     }
 
     if (!precio || precio <= 0) {
-      console.log("❌ Error: Invalid price");
+      console.log("❌ Error: Precio no válido");
       res.status(400).json({ error: "Valid price is required" });
       return;
     }
@@ -359,16 +359,16 @@ router.post("/list-nft", async (req: Request, res: Response) => {
     // Convertir precio a Wei (asumimos que el precio está en tokens)
     const priceInWei = ethers.parseUnits(precio.toString(), 18);
 
-    console.log(`🏷️ Listing NFT on marketplace...`);
+    console.log(`🏷️ Listando NFT en marketplace...`);
     console.log(`📍 Address: ${address}`);
     console.log(`🏷️ Token ID: ${tokenId}`);
-    console.log(`💰 Price: ${precio} tokens`);
+    console.log(`💰 Precio: ${precio} tokens`);
 
     // Llamar al método listNFT del contrato Marketplace
     const tx = await marketplaceContract.listNFT(address, tokenId, priceInWei);
     await tx.wait();
 
-    console.log("✅ NFT listed successfully on marketplace");
+    console.log("✅ NFT listado exitosamente en el marketplace");
 
     res.json({
       success: true,
@@ -384,25 +384,25 @@ router.post("/list-nft", async (req: Request, res: Response) => {
 });
 
 router.post("/unlist-nft", async (req: Request, res: Response) => {
-  console.log("📥 New unlist NFT request received");
+  console.log("📥 Nueva petición de unlist NFT recibida");
 
   try {
     const { address, tokenId } = req.body;
 
     // Validar que todos los parámetros requeridos estén presentes
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
 
     if (!tokenId && tokenId !== 0) {
-      console.log("❌ Error: Token ID not provided");
+      console.log("❌ Error: Token ID no proporcionado");
       res.status(400).json({ error: "Token ID is required" });
       return;
     }
 
-    console.log(`🚫 Removing NFT from marketplace...`);
+    console.log(`🚫 Removiendo NFT del marketplace...`);
     console.log(`📍 Address: ${address}`);
     console.log(`🏷️ Token ID: ${tokenId}`);
 
@@ -410,7 +410,7 @@ router.post("/unlist-nft", async (req: Request, res: Response) => {
     const tx = await marketplaceContract.unlistNFT(address, tokenId);
     await tx.wait();
 
-    console.log("✅ NFT removed successfully from marketplace");
+    console.log("✅ NFT removido exitosamente del marketplace");
 
     res.json({
       success: true,
@@ -425,33 +425,33 @@ router.post("/unlist-nft", async (req: Request, res: Response) => {
 });
 
 router.get("/user-listings/:address", async (req: Request, res: Response) => {
-  console.log("📥 New request to get user listings");
+  console.log("📥 Nueva petición para obtener listings de usuario");
 
   try {
     const { address } = req.params;
 
     // Validar que el address esté presente
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Address is required" });
       return;
     }
 
     // Validar formato de address (básico)
     if (!ethers.isAddress(address)) {
-      console.log("❌ Error: Invalid address");
+      console.log("❌ Error: Address no válido");
       res.status(400).json({ error: "Invalid address format" });
       return;
     }
 
-    console.log(`🔍 Getting listings for address: ${address}`);
+    console.log(`🔍 Obteniendo listings para address: ${address}`);
 
     // Obtener los tokenIds listados por el usuario
     const userTokenIds = await marketplaceContract.getUserListings(address);
-    console.log(`📋 Token IDs found: ${userTokenIds.length}`);
+    console.log(`📋 Token IDs encontrados: ${userTokenIds.length}`);
 
     if (userTokenIds.length === 0) {
-      console.log("📭 No listings found for this user");
+      console.log("📭 No se encontraron listings para este usuario");
       res.json({
         success: true,
         address: address,
@@ -482,12 +482,15 @@ router.get("/user-listings/:address", async (req: Request, res: Response) => {
           });
         }
       } catch (error) {
-        console.log(`⚠️ Error getting details for token ${tokenId}:`, error);
+        console.log(
+          `⚠️ Error obteniendo detalles del token ${tokenId}:`,
+          error
+        );
         // Continuar con el siguiente token en caso de error
       }
     }
 
-    console.log(`✅ Active listings found: ${listings.length}`);
+    console.log(`✅ Listings activos encontrados: ${listings.length}`);
 
     res.json({
       success: true,
@@ -502,51 +505,51 @@ router.get("/user-listings/:address", async (req: Request, res: Response) => {
 });
 
 router.post("/buy-nft", async (req: Request, res: Response) => {
-  console.log("📥 New NFT purchase request received");
+  console.log("📥 Nueva petición de compra de NFT recibida");
 
   try {
     const { address, tokenId } = req.body;
 
     // Validar que todos los parámetros requeridos estén presentes
     if (!address) {
-      console.log("❌ Error: Address not provided");
+      console.log("❌ Error: Address no proporcionado");
       res.status(400).json({ error: "Buyer address is required" });
       return;
     }
 
     if (!tokenId && tokenId !== 0) {
-      console.log("❌ Error: Token ID not provided");
+      console.log("❌ Error: Token ID no proporcionado");
       res.status(400).json({ error: "Token ID is required" });
       return;
     }
 
     // Validar formato de address
     if (!ethers.isAddress(address)) {
-      console.log("❌ Error: Invalid address");
+      console.log("❌ Error: Address no válido");
       res.status(400).json({ error: "Invalid address format" });
       return;
     }
 
-    console.log(`🛒 Buying NFT...`);
-    console.log(`👤 Buyer: ${address}`);
+    console.log(`🛒 Comprando NFT...`);
+    console.log(`👤 Comprador: ${address}`);
     console.log(`🏷️ Token ID: ${tokenId}`);
 
     // Obtener detalles del listing antes de la compra para logs
     try {
       const listing = await marketplaceContract.getListing(tokenId);
       if (!listing.isActive) {
-        console.log("❌ Error: NFT is not listed");
+        console.log("❌ Error: NFT no está listado");
         res.status(400).json({ error: "NFT is not listed for sale" });
         return;
       }
 
       const listingPriceInTokens = ethers.formatUnits(listing.price, 18);
-      console.log(`💰 Price: ${listingPriceInTokens} tokens`);
-      console.log(`👨‍💼 Seller: ${listing.seller}`);
+      console.log(`💰 Precio: ${listingPriceInTokens} tokens`);
+      console.log(`👨‍💼 Vendedor: ${listing.seller}`);
 
       // Verificar que el comprador no sea el vendedor
       if (listing.seller.toLowerCase() === address.toLowerCase()) {
-        console.log("❌ Error: Cannot buy own NFT");
+        console.log("❌ Error: No se puede comprar propio NFT");
         res.status(400).json({ error: "Cannot buy your own NFT" });
         return;
       }
@@ -557,12 +560,12 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
       const treesPerParcel = 16; // TREES_PER_PARCEL constante del contrato
       const maxTreesAllowed = userParcels * treesPerParcel;
 
-      console.log(`🏞️ Buyer's parcels: ${userParcels}`);
-      console.log(`🌳 Current trees: ${currentTrees}`);
-      console.log(`📊 Maximum allowed: ${maxTreesAllowed}`);
+      console.log(`🏞️ Parcelas del comprador: ${userParcels}`);
+      console.log(`🌳 Árboles actuales: ${currentTrees}`);
+      console.log(`📊 Máximo permitido: ${maxTreesAllowed}`);
 
       if (currentTrees >= maxTreesAllowed) {
-        console.log("❌ Error: Buyer has no space in their parcels");
+        console.log("❌ Error: Comprador no tiene espacio en sus parcelas");
         res.status(400).json({
           error: "Not enough parcel space to buy this NFT",
           currentTrees: currentTrees.toString(),
@@ -577,11 +580,11 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
       const priceInTokens = ethers.formatUnits(listing.price, 18);
       const balanceInTokens = ethers.formatUnits(buyerBalance, 18);
 
-      console.log(`💰 NFT price: ${priceInTokens} tokens`);
-      console.log(`🏦 Buyer's balance: ${balanceInTokens} tokens`);
+      console.log(`💰 Precio del NFT: ${priceInTokens} tokens`);
+      console.log(`🏦 Balance del comprador: ${balanceInTokens} tokens`);
 
       if (buyerBalance < listing.price) {
-        console.log("❌ Error: Insufficient funds to buy the NFT");
+        console.log("❌ Error: Fondos insuficientes para comprar el NFT");
         res.status(400).json({
           error: "Insufficient token balance to buy this NFT",
           required: priceInTokens,
@@ -595,7 +598,7 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
       const tx = await marketplaceContract.buyNFT(address, tokenId);
       await tx.wait();
 
-      console.log("✅ NFT purchased successfully");
+      console.log("✅ NFT comprado exitosamente");
 
       res.json({
         success: true,
@@ -607,14 +610,17 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
         priceWei: listing.price.toString(),
       });
     } catch (listingError: any) {
-      console.log("❌ Error getting listing details:", listingError.message);
+      console.log(
+        "❌ Error obteniendo detalles del listing:",
+        listingError.message
+      );
 
       // Intentar la compra de todas formas, por si el error es solo de consulta
       try {
         const tx = await marketplaceContract.buyNFT(address, tokenId);
         await tx.wait();
 
-        console.log("✅ NFT purchased successfully (without previous details)");
+        console.log("✅ NFT comprado exitosamente (sin detalles previos)");
 
         res.json({
           success: true,
@@ -646,39 +652,41 @@ router.post("/buy-nft", async (req: Request, res: Response) => {
 // Métodos administrativos para gestión de usuarios
 
 router.post("/register-user", async (req: Request, res: Response) => {
-  console.log("📥 New administrative user registration request received");
+  console.log(
+    "📥 Nueva petición de registro administrativo de usuario recibida"
+  );
 
   try {
     const { userAddress, name } = req.body;
 
     // Validar parámetros
     if (!userAddress) {
-      console.log("❌ Error: userAddress not provided");
+      console.log("❌ Error: userAddress no proporcionado");
       res.status(400).json({ error: "User address is required" });
       return;
     }
 
     if (!name) {
-      console.log("❌ Error: name not provided");
+      console.log("❌ Error: name no proporcionado");
       res.status(400).json({ error: "Name is required" });
       return;
     }
 
     // Validar formato de address
     if (!ethers.isAddress(userAddress)) {
-      console.log("❌ Error: Invalid address");
+      console.log("❌ Error: Address no válido");
       res.status(400).json({ error: "Invalid address format" });
       return;
     }
 
-    console.log(`👤 Registering user: ${userAddress}`);
-    console.log(`📝 Name: ${name}`);
+    console.log(`👤 Registrando usuario: ${userAddress}`);
+    console.log(`📝 Nombre: ${name}`);
 
     // Llamar al método registerUserAdmin del contrato
     const tx = await userRegistryContract.registerUserAdmin(userAddress, name);
     await tx.wait();
 
-    console.log("✅ User registered successfully");
+    console.log("✅ Usuario registrado exitosamente");
 
     res.json({
       success: true,
@@ -706,39 +714,41 @@ router.post("/register-user", async (req: Request, res: Response) => {
 });
 
 router.post("/send-friend-request", async (req: Request, res: Response) => {
-  console.log("📥 New administrative send friend request received");
+  console.log(
+    "📥 Nueva petición de enviar solicitud de amistad administrativamente recibida"
+  );
 
   try {
     const { fromAddress, toAddress } = req.body;
 
     // Validar parámetros
     if (!fromAddress) {
-      console.log("❌ Error: fromAddress not provided");
+      console.log("❌ Error: fromAddress no proporcionado");
       res.status(400).json({ error: "From address is required" });
       return;
     }
 
     if (!toAddress) {
-      console.log("❌ Error: toAddress not provided");
+      console.log("❌ Error: toAddress no proporcionado");
       res.status(400).json({ error: "To address is required" });
       return;
     }
 
     // Validar formato de addresses
     if (!ethers.isAddress(fromAddress)) {
-      console.log("❌ Error: Invalid fromAddress");
+      console.log("❌ Error: fromAddress no válido");
       res.status(400).json({ error: "Invalid from address format" });
       return;
     }
 
     if (!ethers.isAddress(toAddress)) {
-      console.log("❌ Error: Invalid toAddress");
+      console.log("❌ Error: toAddress no válido");
       res.status(400).json({ error: "Invalid to address format" });
       return;
     }
 
-    console.log(`👤 From: ${fromAddress}`);
-    console.log(`📤 Sending request to: ${toAddress}`);
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`📤 Enviando solicitud a: ${toAddress}`);
 
     // Llamar al método sendFriendRequestAdmin del contrato
     const tx = await userRegistryContract.sendFriendRequestAdmin(
@@ -747,7 +757,7 @@ router.post("/send-friend-request", async (req: Request, res: Response) => {
     );
     await tx.wait();
 
-    console.log("✅ Friend request sent successfully");
+    console.log("✅ Solicitud de amistad enviada exitosamente");
 
     res.json({
       success: true,
@@ -777,39 +787,41 @@ router.post("/send-friend-request", async (req: Request, res: Response) => {
 });
 
 router.post("/accept-friend-request", async (req: Request, res: Response) => {
-  console.log("📥 New administrative accept friend request received");
+  console.log(
+    "📥 Nueva petición de aceptar solicitud de amistad administrativamente recibida"
+  );
 
   try {
     const { fromAddress, toAddress } = req.body;
 
     // Validar parámetros
     if (!fromAddress) {
-      console.log("❌ Error: fromAddress not provided");
+      console.log("❌ Error: fromAddress no proporcionado");
       res.status(400).json({ error: "From address is required" });
       return;
     }
 
     if (!toAddress) {
-      console.log("❌ Error: toAddress not provided");
+      console.log("❌ Error: toAddress no proporcionado");
       res.status(400).json({ error: "To address is required" });
       return;
     }
 
     // Validar formato de addresses
     if (!ethers.isAddress(fromAddress)) {
-      console.log("❌ Error: Invalid fromAddress");
+      console.log("❌ Error: fromAddress no válido");
       res.status(400).json({ error: "Invalid from address format" });
       return;
     }
 
     if (!ethers.isAddress(toAddress)) {
-      console.log("❌ Error: Invalid toAddress");
+      console.log("❌ Error: toAddress no válido");
       res.status(400).json({ error: "Invalid to address format" });
       return;
     }
 
-    console.log(`👤 From: ${fromAddress}`);
-    console.log(`✅ Accepting request for: ${toAddress}`);
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`✅ Aceptando solicitud para: ${toAddress}`);
 
     // Llamar al método acceptFriendRequestAdmin del contrato
     const tx = await userRegistryContract.acceptFriendRequestAdmin(
@@ -818,7 +830,7 @@ router.post("/accept-friend-request", async (req: Request, res: Response) => {
     );
     await tx.wait();
 
-    console.log("✅ Friend request accepted successfully");
+    console.log("✅ Solicitud de amistad aceptada exitosamente");
 
     res.json({
       success: true,
@@ -844,52 +856,54 @@ router.post("/accept-friend-request", async (req: Request, res: Response) => {
 });
 
 router.post("/change-name", async (req: Request, res: Response) => {
-  console.log("📥 New administrative name change request received");
+  console.log(
+    "📥 Nueva petición de cambio de nombre administrativamente recibida"
+  );
 
   try {
     const { userAddress, newName } = req.body;
 
     // Validar parámetros
     if (!userAddress) {
-      console.log("❌ Error: userAddress not provided");
+      console.log("❌ Error: userAddress no proporcionado");
       res.status(400).json({ error: "User address is required" });
       return;
     }
 
     if (!newName) {
-      console.log("❌ Error: newName not provided");
+      console.log("❌ Error: newName no proporcionado");
       res.status(400).json({ error: "New name is required" });
       return;
     }
 
     // Validar formato de address
     if (!ethers.isAddress(userAddress)) {
-      console.log("❌ Error: Invalid userAddress");
+      console.log("❌ Error: userAddress no válido");
       res.status(400).json({ error: "Invalid user address format" });
       return;
     }
 
     // Validar longitud del nombre
     if (newName.length === 0) {
-      console.log("❌ Error: Empty name");
+      console.log("❌ Error: Nombre vacío");
       res.status(400).json({ error: "Name cannot be empty" });
       return;
     }
 
     if (newName.length > 50) {
-      console.log("❌ Error: Name too long");
+      console.log("❌ Error: Nombre demasiado largo");
       res.status(400).json({ error: "Name too long (max 50 characters)" });
       return;
     }
 
-    console.log(`👤 User: ${userAddress}`);
-    console.log(`📝 New name: ${newName}`);
+    console.log(`👤 Usuario: ${userAddress}`);
+    console.log(`📝 Nuevo nombre: ${newName}`);
 
     // Llamar al método changeNameAdmin del contrato
     const tx = await userRegistryContract.changeNameAdmin(userAddress, newName);
     await tx.wait();
 
-    console.log("✅ Name changed successfully");
+    console.log("✅ Nombre cambiado exitosamente");
 
     res.json({
       success: true,
@@ -919,39 +933,41 @@ router.post("/change-name", async (req: Request, res: Response) => {
 });
 
 router.post("/remove-friend", async (req: Request, res: Response) => {
-  console.log("📥 New administrative remove friend request received");
+  console.log(
+    "📥 Nueva petición de remover amigo administrativamente recibida"
+  );
 
   try {
     const { userAddress, friendAddress } = req.body;
 
     // Validar parámetros
     if (!userAddress) {
-      console.log("❌ Error: userAddress not provided");
+      console.log("❌ Error: userAddress no proporcionado");
       res.status(400).json({ error: "User address is required" });
       return;
     }
 
     if (!friendAddress) {
-      console.log("❌ Error: friendAddress not provided");
+      console.log("❌ Error: friendAddress no proporcionado");
       res.status(400).json({ error: "Friend address is required" });
       return;
     }
 
     // Validar formato de addresses
     if (!ethers.isAddress(userAddress)) {
-      console.log("❌ Error: Invalid userAddress");
+      console.log("❌ Error: userAddress no válido");
       res.status(400).json({ error: "Invalid user address format" });
       return;
     }
 
     if (!ethers.isAddress(friendAddress)) {
-      console.log("❌ Error: Invalid friendAddress");
+      console.log("❌ Error: friendAddress no válido");
       res.status(400).json({ error: "Invalid friend address format" });
       return;
     }
 
-    console.log(`👤 User: ${userAddress}`);
-    console.log(`👥 Removing friend: ${friendAddress}`);
+    console.log(`👤 Usuario: ${userAddress}`);
+    console.log(`👥 Removiendo amigo: ${friendAddress}`);
 
     // Llamar al método removeFriendAdmin del contrato
     const tx = await userRegistryContract.removeFriendAdmin(
@@ -960,7 +976,7 @@ router.post("/remove-friend", async (req: Request, res: Response) => {
     );
     await tx.wait();
 
-    console.log("✅ Friend removed successfully");
+    console.log("✅ Amigo removido exitosamente");
 
     res.json({
       success: true,
@@ -984,39 +1000,41 @@ router.post("/remove-friend", async (req: Request, res: Response) => {
 });
 
 router.post("/cancel-friend-request", async (req: Request, res: Response) => {
-  console.log("📥 New administrative cancel friend request received");
+  console.log(
+    "📥 Nueva petición de cancelar solicitud de amistad administrativamente recibida"
+  );
 
   try {
     const { fromAddress, toAddress } = req.body;
 
     // Validar parámetros
     if (!fromAddress) {
-      console.log("❌ Error: fromAddress not provided");
+      console.log("❌ Error: fromAddress no proporcionado");
       res.status(400).json({ error: "From address is required" });
       return;
     }
 
     if (!toAddress) {
-      console.log("❌ Error: toAddress not provided");
+      console.log("❌ Error: toAddress no proporcionado");
       res.status(400).json({ error: "To address is required" });
       return;
     }
 
     // Validar formato de addresses
     if (!ethers.isAddress(fromAddress)) {
-      console.log("❌ Error: Invalid fromAddress");
+      console.log("❌ Error: fromAddress no válido");
       res.status(400).json({ error: "Invalid from address format" });
       return;
     }
 
     if (!ethers.isAddress(toAddress)) {
-      console.log("❌ Error: Invalid toAddress");
+      console.log("❌ Error: toAddress no válido");
       res.status(400).json({ error: "Invalid to address format" });
       return;
     }
 
-    console.log(`👤 From: ${fromAddress}`);
-    console.log(`❌ Canceling request for: ${toAddress}`);
+    console.log(`👤 De: ${fromAddress}`);
+    console.log(`❌ Cancelando solicitud para: ${toAddress}`);
 
     // Llamar al método cancelFriendRequestAdmin del contrato
     const tx = await userRegistryContract.cancelFriendRequestAdmin(
@@ -1025,7 +1043,7 @@ router.post("/cancel-friend-request", async (req: Request, res: Response) => {
     );
     await tx.wait();
 
-    console.log("✅ Friend request canceled successfully");
+    console.log("✅ Solicitud de amistad cancelada exitosamente");
 
     res.json({
       success: true,
@@ -1054,5 +1072,5 @@ app.use(router);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
